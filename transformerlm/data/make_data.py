@@ -5,7 +5,6 @@ import time
 import numpy as np
 
 def get_args():
-    DATA_PATH = Path("./transformerLM/data")
     parser = argparse.ArgumentParser(
         description="Tokenize a text file and save tokens as a .dat numpy array."
     )
@@ -15,6 +14,7 @@ def get_args():
     parser.add_argument("--vocab_path", type=str, default=str("gpt2_vocab.json"), help="Path to the vocab JSON file")
     parser.add_argument("--merges_path", type=str, default=str("gpt2_merges.txt"), help="Path to the merges file")
     parser.add_argument("--total_tokens", type=int, required=True, default=None, help="Total number of tokens to write")
+    parser.add_argument( "--special_tokens", nargs="+",  type=str, help="List of special tokens (space separated)")
     
     return parser.parse_args()
 
