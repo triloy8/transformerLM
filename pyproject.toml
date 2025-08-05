@@ -1,0 +1,28 @@
+[project]
+name = "transformerLM"
+version = "1.0.0"
+description = "A from scratch implementation of a Transformer Language Model"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "numpy",
+    "pytest>=8.3.4",
+    "jaxtyping>=0.3.0",
+    "torch",
+    "tqdm>=4.67.1",
+    "wandb>=0.19.7",
+    "einops>=0.8.1",
+    "regex>=2024.11.6",
+]
+
+[tool.uv]
+python-preference = "managed"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = ["UP"]
+ignore = [
+    "F722"
+]
