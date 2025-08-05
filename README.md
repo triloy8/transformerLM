@@ -14,7 +14,7 @@ The goal is just to explore making a basic Transformer Language model from scrat
   - RMSNorm
   - SwiGLU Activation
   - Rotary Position Embedding (RoPE)
-  - Scale Dot Product Attention (SPDA)
+  - Scale Dot Product Attention (SDPA)
   - Multi-Headed Attention (MHA)
   - Softmax Function
   - Decoder-Only Transformer Blocks
