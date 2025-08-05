@@ -2,29 +2,45 @@ from transformerlm.tokenizer.tokenizer_utils import (gpt2_bytes_to_unicode,
                                                      find_chunk_boundaries,
                                                      process_chunk_text,)
 import os
+import json
+import argparse
 import regex as re
 from collections import Counter
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 
-def train_bpe(
-    input_path: str | os.PathLike,
-    vocab_size: int,
-    special_tokens: list[str],
-) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+
+def get_args():
+    parser = argparse.ArgumentParser(description="Process input path, vocab size, and special tokens.")
+
+    # ===== TRAIN BPE INPUTS =====
+    parser.add_argument( "--input_path", type=str, help="Path to the input file or directory")
+    parser.add_argument( "--vocab_size", type=int, help="Vocabulary size")
+    parser.add_argument( "--special_tokens", nargs="+",  type=str, help="List of special tokens (space separated)")
+
+    # ===== TRAIN BPE OUTPUTS =====
+    parser.add_argument('--merges_path', type=str, required=True, help='Output path for merges file')
+    parser.add_argument('--vocab_path', type=str, required=True, help='Output path for vocab JSON file')
+
     
+    args = parser.parse_args()
+    args.input_path = os.path.expanduser(args.input_path)
+    
+    return args
+
+def train_bpe(args):
     gpt2_byte_encoder = gpt2_bytes_to_unicode()
     gpt2_byte_decoder = {v: k for k, v in gpt2_bytes_to_unicode().items()}
 
      # - initialize vocab with <|endoftext|> and gpt2 encoder
-    vocab_list = special_tokens + [gpt2_byte_encoder[k] for k in gpt2_byte_encoder.keys()]
+    vocab_list = [gpt2_byte_encoder[k] for k in gpt2_byte_encoder.keys()]
     initial_vocab = {k:i for i, k in enumerate(vocab_list)}
 
     # - open corpus, remove special token and pretokenize on chunks
     num_processes = 1
     pretoken_frequency = Counter()
-    with open(input_path, "rb") as f:
+    with open(args.input_path, "rb") as f:
         boundaries = find_chunk_boundaries(f,
                                            num_processes,
                                            "<|endoftext|>".encode("utf-8"))
@@ -32,7 +48,7 @@ def train_bpe(
         with ProcessPoolExecutor() as executor:
             results = list(
                 executor.map(
-                    partial(process_chunk_text, input_path=input_path, special_tokens=special_tokens),
+                    partial(process_chunk_text, input_path=args.input_path, special_tokens=args.special_tokens),
                     zip(boundaries[:-1], boundaries[1:])
                 )
             )
@@ -49,7 +65,7 @@ def train_bpe(
     merges = []
     vocab = initial_vocab
     iter = 0
-    iter_max = vocab_size - len(list(vocab.keys()))
+    iter_max = args.vocab_size - len(list(vocab.keys()))
     while iter < iter_max:
         # compute pair frequency
         pair_frequency = {}
@@ -97,17 +113,17 @@ def train_bpe(
     for i, merge in enumerate(merges):
         merge_token = "".join(merge.split())
         vocab[merge_token] = initial_vocab_size + i
-    bytes_vocab = {
-        gpt2_vocab_index: bytes([gpt2_byte_decoder[token] for token in gpt2_vocab_item])
-        for gpt2_vocab_item, gpt2_vocab_index in vocab.items()
-    }
-    
-    bytes_merges = [
-        (
-            bytes([gpt2_byte_decoder[c] for c in merge.split()[0]]),
-            bytes([gpt2_byte_decoder[c] for c in merge.split()[1]])
-        )
-        for merge in merges
-    ]
+    for i, special_token in enumerate(args.special_tokens):
+        vocab[special_token] = len(vocab)+i
 
-    return (bytes_vocab, bytes_merges)
+    with open(args.merges_path, "w", encoding="utf-8") as f:
+        for token in merges:
+            f.write(token + "\n")
+
+    with open(args.vocab_path, "w", encoding="utf-8") as f:
+        json.dump(vocab, f, ensure_ascii=False, indent=4)
+
+
+if __name__ == "__main__":
+    args = get_args()
+    train_bpe(args)
