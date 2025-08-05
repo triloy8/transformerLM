@@ -1,8 +1,5 @@
-uv run -m transformerlm.transformer.train_transformer.py \
-  --data_path ./data \
+uv run -m transformerlm.transformer.train_transformer \
   --runs_path ./runs \
-  --vocab_path ./data/gpt2_vocab.json \
-  --merges_path ./data/gpt2_merges.txt \
   --np_dat_train_path ./data/TinyStoriesV2-GPT4-train.dat \
   --total_train_tokens 547994686 \
   --np_dat_valid_path ./data/TinyStoriesV2-GPT4-valid.dat \
