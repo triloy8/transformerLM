@@ -14,6 +14,7 @@ import torch
 import wandb
 import datetime
 import os
+import argparse
 
 DTYPES = {
     "float32": torch.float32,
@@ -21,7 +22,56 @@ DTYPES = {
     "bfloat16": torch.bfloat16,
 }
 
-# wandb
+def get_args():
+    parser = argparse.ArgumentParser(
+        description="Training script hyperparameters and options."
+    )
+
+    # ===== OPTIMIZER =====
+    parser.add_argument('--betas', type=float, nargs=2, default=(0.9, 0.95), help='Adam betas (beta1, beta2)')
+    parser.add_argument('--eps', type=float, default=1e-8, help='Adam epsilon')
+    parser.add_argument('--weight_decay', type=float, default=0.1, help='Weight decay')
+    parser.add_argument('--max_learning_rate', type=float, default=3e-4, help='Maximum learning rate')
+    parser.add_argument('--min_learning_rate', type=float, default=3e-5, help='Minimum learning rate (default: 0.1 * max_learning_rate)')
+    parser.add_argument('--warmup_iters', type=int, default=10, help='Number of warmup iterations')
+    parser.add_argument('--cosine_cycle_iters', type=int, default=90, help='Number of iterations for cosine annealing')
+    parser.add_argument('--grad_clip_max_l2_norm', type=float, default=1.0, help='Maximum L2-norm for gradient clipping')
+
+    # ===== MODEL =====
+    parser.add_argument('--vocab_size', type=int, default=50257, help='Vocabulary size')
+    parser.add_argument('--context_length', type=int, default=1024, help='Max sequence/context length')
+    parser.add_argument('--d_model', type=int, default=768, help='Model dimension')
+    parser.add_argument('--num_layers', type=int, default=12, help='Number of transformer layers')
+    parser.add_argument('--num_heads', type=int, default=12, help='Number of attention heads')
+    parser.add_argument('--d_ff', type=int, default=3072, help='Feedforward hidden dimension')
+    parser.add_argument('--rope_theta', type=float, default=10000.0, help='Rotary embedding theta')
+
+    # ===== GLOBAL =====
+    parser.add_argument('--device', type=str, default='cuda', help='Device to train on (e.g., cuda, cpu)')
+    parser.add_argument('--dtype', type=str, default='float32', help='Tensor dtype (e.g., float32, bfloat16)')
+    parser.add_argument('--max_iteration', type=int, default=100000, help='Total number of iterations to train for')
+    parser.add_argument('--ckpting_save_iter', type=int, default=1000, help='Checkpoint save interval')
+    parser.add_argument('--batch_size', type=int, default=4, help='Batch size for training')
+    parser.add_argument('--max_train_iteration', type=int, default=100, help='Total number of training iterations per run')
+    parser.add_argument('--max_val_iteration', type=int, default=5, help='Total number of validation iterations per evaluation')
+    parser.add_argument('--val_freq_iteration', type=int, default=25, help='Run validation every N training iterations')
+
+    # ===== DATA / PATHS =====
+    parser.add_argument( '--data_path', type=Path, default=Path('./data'), help='Root directory where all data files live')
+    parser.add_argument( '--runs_path', type=Path, default=Path('./runs'), help='Directory for experiment runs / checkpoints / logs')
+    parser.add_argument( '--vocab_path', type=Path, default=Path('./data/gpt2_vocab.json'), help='Path to GPT-2 tokenizer vocab file')
+    parser.add_argument( '--merges_path', type=Path, default=Path('./data/gpt2_merges.txt'), help='Path to GPT-2 tokenizer merges file')
+    parser.add_argument( '--np_dat_train_path', type=Path, default=Path('./data/TinyStoriesV2-GPT4-train.dat'), help='Memory-mapped (numpy) training dataset')
+    parser.add_argument( '--total_train_tokens', type=int, default=547_994_686, help='Total number of tokens in the training set (for progress bars / LR schedules)')
+    parser.add_argument( '--np_dat_valid_path', type=Path, default=Path('./data/TinyStoriesV2-GPT4-valid.dat'), help='Memory-mapped (numpy) validation dataset')
+    parser.add_argument( '--total_val_tokens', type=int, default=5_535_291, help='Total number of tokens in the validation set')
+
+
+    return parser.parse_args()
+
+args = get_args()
+
+# wandb config
 run = wandb.init(
     entity="yiltro8-org",
     project="transformer_lm",
@@ -29,41 +79,41 @@ run = wandb.init(
     config={
         "architecture": "Transformer LM",
         "dataset": "TinyStoriesV2-GPT4",
-        "vocab_size": 50257,
-        "context_length": 256,
-        "d_model": 512,
-        "num_layers": 4,
-        "num_heads": 16,
-        "d_ff": 1344,
-        "rope_theta": 10000.0,
-        "betas": (0.9, 0.95),
-        "eps": 1e-8,
-        "weight_decay": 0.001,
-        "grad_clip_max_l2_norm": 1.0,
-        "max_learning_rate": 1e-3,
-        "min_learning_rate": 1e-4,
-        "warmup_iters": 50,
-        "cosine_cycle_iters": 4500,
-        "max_train_iteration": 5000,
-        "max_val_iteration": 10,
-        "val_freq_iteration": 125,
-        "batch_size": 32,
-        "device": "cuda",
-        "dtype": "float32",
-        "ckpting_save_iter": 1000,
+        "vocab_size": args.vocab_size,
+        "context_length": args.context_length,
+        "d_model": args.d_model,
+        "num_layers": args.num_layers,
+        "num_heads": args.num_heads,
+        "d_ff": args.d_ff,
+        "rope_theta": args.rope_theta,
+        "betas": args.betas,
+        "eps": args.eps,
+        "weight_decay": args.weight_decay,
+        "grad_clip_max_l2_norm": args.grad_clip_max_l2_norm,
+        "max_learning_rate": args.max_learning_rate,
+        "min_learning_rate": args.min_learning_rate,
+        "warmup_iters": args.warmup_iters,
+        "cosine_cycle_iters": args.cosine_cycle_iters,
+        "max_train_iteration": args.max_train_iteration,
+        "max_val_iteration": args.max_val_iteration,
+        "val_freq_iteration": args.val_freq_iteration,
+        "batch_size": args.batch_size,
+        "device": args.device,
+        "dtype": args.dtype,
+        "ckpting_save_iter": args.ckpting_save_iter,
     },
 )
 cfg  = run.config
 
-# data
-DATA_PATH = Path("./transformerLM/data")
-RUNS_PATH = Path("./transformerLM/runs")
-VOCAB_PATH = DATA_PATH / "gpt2_vocab.json"
-MERGES_PATH = DATA_PATH / "gpt2_merges.txt"
-NP_DAT_TRAIN_PATH = DATA_PATH / "TinyStoriesV2-GPT4-train.dat"
-total_train_tokens = 547994686
-NP_DAT_VALID_PATH = DATA_PATH / "TinyStoriesV2-GPT4-valid.dat"
-total_val_tokens = 5535291
+# data config
+DATA_PATH = args.data_path            
+RUNS_PATH = args.runs_path            
+VOCAB_PATH = args.vocab_path           
+MERGES_PATH = args.merges_path
+NP_DAT_TRAIN_PATH = args.np_dat_train_path
+total_train_tokens  = args.total_train_tokens
+NP_DAT_VALID_PATH = args.np_dat_valid_path
+total_val_tokens = args.total_val_tokens     
 
 ckpting_save_folder = RUNS_PATH / run.name
 if not os.path.exists(ckpting_save_folder):
