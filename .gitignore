@@ -207,6 +207,6 @@ marimo/_lsp/
 __marimo__/
 
 # Project specifics
-wandb/
-data/
-runs/
+/wandb/
+/data/
+/runs/
