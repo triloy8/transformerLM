@@ -1,17 +1,22 @@
 from transformerlm.tokenizer.tokenizer import Tokenizer
 from pathlib import Path
+import argparse
 import time
 import numpy as np
 
-DATA_PATH = Path("./transformerLM/data")
-VOCAB_PATH = DATA_PATH / "gpt2_vocab.json"
-MERGES_PATH = DATA_PATH / "gpt2_merges.txt"
-TINYSTORIES_TRAIN_PATH = DATA_PATH / "TinyStoriesV2-GPT4-train.txt" # total_tokens = 547994686
-TINYSTORIES_VAL_PATH = DATA_PATH / "TinyStoriesV2-GPT4-valid.txt" # total_tokens = 5535291
+def get_args():
+    DATA_PATH = Path("./transformerLM/data")
+    parser = argparse.ArgumentParser(
+        description="Tokenize a text file and save tokens as a .dat numpy array."
+    )
 
-tokenizer = Tokenizer.from_files(vocab_filepath=VOCAB_PATH, 
-                                 merges_filepath=MERGES_PATH, 
-                                 special_tokens=["<|endoftext|>", "<|endoftext|><|endoftext|>"])
+    parser.add_argument("--input_filename", type=str, required=True, help="Path to the input .txt file")
+    parser.add_argument("--output_filename", type=str, required=True, help="Path to the output .dat file (numpy array of tokens)")
+    parser.add_argument("--vocab_path", type=str, default=str("gpt2_vocab.json"), help="Path to the vocab JSON file")
+    parser.add_argument("--merges_path", type=str, default=str("gpt2_merges.txt"), help="Path to the merges file")
+    parser.add_argument("--total_tokens", type=int, required=True, default=None, help="Total number of tokens to write")
+    
+    return parser.parse_args()
 
 def count_total_tokens(tokenizer, input_filename):
     with open(input_filename, 'r') as f:
@@ -49,3 +54,12 @@ def write_token_ids_to_memmap(tokenizer, input_filename, total_tokens, output_fi
     total_time = time.time() - start_time
     print(f"Done writing {total_tokens:,} tokens to {output_filename} in {total_time:.1f}s "
           f"({total_time/60:.1f} min).")
+
+if __name__ == "__main__":
+    args = get_args()
+
+    tokenizer = Tokenizer.from_files(vocab_filepath=args.vocab_path,
+                                     merges_filepath=args.merges_path,
+                                     special_tokens=["<|endoftext|>"])
+
+    write_token_ids_to_memmap(tokenizer, args.input_filename, args.total_tokens, args.output_filename)
