@@ -59,7 +59,7 @@ The goal is just to explore making a basic Transformer Language model from scrat
 Ensure you have [`uv`](https://github.com/astral-sh/uv) installed, then run scripts directly:
 
 ```bash
-source scripts/*.py
+source scripts/*.sh
 ```
 
 ## Usage Examples
