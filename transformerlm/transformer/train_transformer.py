@@ -1,12 +1,12 @@
-from tokenizer import Tokenizer
-from transfomerlm.transformer.transformer_lm import (TransformerLM,
-                            Linear)
-from train_transformer_utils import (AdamW,
-                                     get_batch,
-                                     cross_entropy,
-                                     save_checkpoint,
-                                     lr_cosine_schedule,
-                                     gradient_clipping,)
+from transformerlm.tokenizer.tokenizer import Tokenizer
+from transformerlm.transformer.transformer_lm import (TransformerLM,
+                                                      Linear)
+from transformerlm.transformer.train_transformer_utils import (AdamW,
+                                                               get_batch,
+                                                               cross_entropy,
+                                                               save_checkpoint,
+                                                               lr_cosine_schedule,
+                                                               gradient_clipping,)
 
 from pathlib import Path
 import numpy as np

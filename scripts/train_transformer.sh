@@ -1,4 +1,4 @@
-uv run transformerlm.transformer.train_transformer.py \
+uv run -m transformerlm.transformer.train_transformer.py \
   --data_path ./data \
   --runs_path ./runs \
   --vocab_path ./data/gpt2_vocab.json \
