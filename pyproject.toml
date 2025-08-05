@@ -15,6 +15,9 @@ dependencies = [
     "regex>=2024.11.6",
 ]
 
+[tool.setuptools.packages.find]
+include = ["transformerlm"]
+
 [tool.uv]
 python-preference = "managed"
 

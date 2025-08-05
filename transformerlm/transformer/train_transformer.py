@@ -1,5 +1,5 @@
 from tokenizer import Tokenizer
-from transformer_lm import (TransformerLM,
+from transfomerlm.transformer.transformer_lm import (TransformerLM,
                             Linear)
 from train_transformer_utils import (AdamW,
                                      get_batch,
