@@ -1,5 +1,6 @@
 from transformerlm.tokenizer.tokenizer import Tokenizer
 from transformerlm.transformer.transformer_lm import TransformerLM
+from transformerlm.inference.generate import generate
 import torch
 import argparse
 import json
@@ -29,11 +30,15 @@ def infer_transformer(args):
 
     in_indices = torch.tensor(ids, device=args.device)
 
-    out_indices = model.decode(in_indices=in_indices, 
-                            context_length=args.context_length, 
-                            temperature=args.temperature, 
-                            p=args.p, 
-                            eos_token_id=args.eos_token_id)
+    out_indices = generate(
+        model,
+        in_indices=in_indices,
+        steps=args.context_length,
+        temperature=args.temperature,
+        p=args.p,
+        eos_token_id=args.eos_token_id,
+        context_length=args.context_length,
+    )
 
     output_strings = []
     for out_indices_ in out_indices: 
