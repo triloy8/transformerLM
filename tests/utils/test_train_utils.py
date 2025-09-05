@@ -97,3 +97,23 @@ def test_checkpointing_roundtrip(tmp_path, device):
     new_state = model.state_dict()
     for k in orig_state:
         assert torch.allclose(orig_state[k], new_state[k])
+
+
+def test_adamw_single_step_matches_torch(device):
+    # Simple 1D parameter tensor with fixed gradient
+    p_init = torch.tensor([1.0, -2.0, 3.0], device=device)
+    grad = torch.tensor([0.1, -0.2, 0.3], device=device)
+
+    # Our optimizer
+    p1 = torch.nn.Parameter(p_init.clone(), requires_grad=True)
+    p1.grad = grad.clone()
+    opt1 = AdamW([p1], lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01)
+    opt1.step()
+
+    # Torch AdamW
+    p2 = torch.nn.Parameter(p_init.clone(), requires_grad=True)
+    p2.grad = grad.clone()
+    opt2 = torch.optim.AdamW([p2], lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01)
+    opt2.step()
+
+    assert torch.allclose(p1.data, p2.data, atol=1e-7, rtol=1e-6)
