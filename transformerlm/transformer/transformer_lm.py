@@ -190,7 +190,7 @@ class TransformerBlock(nn.Module):
         self.ln2 = RMSNorm(d_model, device=device, dtype=dtype)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        token_positions = torch.arange(0, x.shape[-2])
+        token_positions = torch.arange(x.shape[-2], device=x.device, dtype=torch.long)
         x = x + self.attn(self.ln1(x), token_positions)
         x = x + self.ffn(self.ln2(x))
 
