@@ -1,5 +1,5 @@
 [project]
-name = "transformerLM"
+name = "transformerlm"
 version = "1.0.0"
 description = "A from scratch implementation of a Transformer Language Model"
 readme = "README.md"

@@ -8,12 +8,7 @@ from transformerlm.config import (
     load_infer_config,
     asdict_pretty,
 )
-
-DTYPES = {
-    "float32": torch.float32,
-    "float16": torch.float16,
-    "bfloat16": torch.bfloat16,
-}
+from transformerlm.utils.dtypes import DTYPES
 
 def infer_transformer(args):
     tokenizer = Tokenizer.from_files(vocab_filepath=args.vocab_path, merges_filepath=args.merges_path, special_tokens=args.special_tokens)

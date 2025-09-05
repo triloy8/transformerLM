@@ -20,12 +20,7 @@ from transformerlm.config import (
     load_train_config,
     asdict_pretty,
 )
-
-DTYPES = {
-    "float32": torch.float32,
-    "float16": torch.float16,
-    "bfloat16": torch.bfloat16,
-}
+from transformerlm.utils.dtypes import DTYPES
 
 def train_transformer(args):
     # wandb config

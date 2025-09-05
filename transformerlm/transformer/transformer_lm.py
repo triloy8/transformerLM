@@ -224,6 +224,7 @@ class TransformerBlock(nn.Module):
 class TransformerLM(nn.Module):
     def __init__(self, vocab_size: int, context_length: int, d_model: int, num_layers: int, num_heads: int, d_ff: int, rope_theta: float, device=None, dtype=None):
         super().__init__()
+        self.context_length = context_length
         self.token_embeddings = Embedding(vocab_size, d_model, device, dtype)
         self.layers = torch.nn.ModuleList([TransformerBlock(d_model, num_heads, context_length, rope_theta, d_ff, device, dtype) for _ in range(num_layers)]) 
         self.ln_final = RMSNorm(d_model, device=device, dtype=dtype)
@@ -242,13 +243,14 @@ class TransformerLM(nn.Module):
         return logits
     
     @torch.no_grad() # in_indices: torch.Tensor
-    def decode(self, in_indices: torch.Tensor, context_length: int, temperature=1.0, p=0.0, eos_token_id=None):
+    def decode(self, in_indices: torch.Tensor, context_length: int | None = None, temperature=1.0, p=0.0, eos_token_id=None):
         batch_size = in_indices.shape[0]
         device = in_indices.device
         finished = torch.zeros(batch_size, dtype=torch.bool, device=device)
+        ctx = self.context_length if context_length is None else context_length
 
-        for _ in range(context_length):
-            context_indices = in_indices if in_indices.shape[1] <= context_length else in_indices[:, -context_length:]
+        for _ in range(ctx):
+            context_indices = in_indices if in_indices.shape[1] <= ctx else in_indices[:, -ctx:]
             
             logits = self(context_indices)
             logits = logits[:, -1, :] / temperature
