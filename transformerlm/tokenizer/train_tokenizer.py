@@ -1,6 +1,8 @@
-from transformerlm.tokenizer.tokenizer_utils import (gpt2_bytes_to_unicode,
-                                                     find_chunk_boundaries,
-                                                     process_chunk_text,)
+from transformerlm.tokenizer.pretokenize import gpt2_bytes_to_unicode
+from transformerlm.tokenizer.io import (
+    find_chunk_boundaries,
+    process_chunk_text,
+)
 import os
 import json
 import argparse

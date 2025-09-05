@@ -1,4 +1,4 @@
-from transformerlm.tokenizer.tokenizer_utils import gpt2_bytes_to_unicode
+from transformerlm.tokenizer.pretokenize import gpt2_bytes_to_unicode
 from typing import Iterable, Iterator
 import json
 import regex as re
