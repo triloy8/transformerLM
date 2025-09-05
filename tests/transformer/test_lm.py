@@ -1,7 +1,7 @@
 import torch
 
-from transformerlm.transformer.transformer_lm import TransformerLM
-from transformerlm.transformer.transformer_lm import top_p_filter
+from transformerlm.models import TransformerLM
+from transformerlm.inference import top_p_filter
 
 
 def make_tiny_model(device):

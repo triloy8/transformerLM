@@ -1,5 +1,7 @@
-from transformerlm.transformer.transformer_lm import (TransformerLM,
-                                                      Linear)
+from transformerlm.models import (
+    TransformerLM,
+    Linear,
+)
 from transformerlm.training.optim import AdamW
 from transformerlm.training.data import get_batch
 from transformerlm.training.loss import cross_entropy
@@ -22,6 +24,7 @@ from transformerlm.config import (
     asdict_pretty,
 )
 from transformerlm.utils.dtypes import DTYPES
+
 
 def train_transformer(args):
     # wandb config
@@ -56,37 +59,39 @@ def train_transformer(args):
             "ckpting_save_iter": args.ckpting_save_iter,
         },
     )
-    cfg  = run.config
+    cfg = run.config
 
     ckpting_save_folder = args.runs_path / run.name
     if not os.path.exists(ckpting_save_folder):
         os.makedirs(ckpting_save_folder)
 
-    model = TransformerLM(vocab_size=cfg.vocab_size, 
-                        context_length=cfg.context_length, 
-                        d_model=cfg.d_model, 
-                        num_layers=cfg.num_layers, 
-                        num_heads=cfg.num_heads, 
-                        d_ff=cfg.d_ff, 
-                        rope_theta=cfg.rope_theta,
-                        device=cfg.device, 
-                        dtype=DTYPES[cfg.dtype])
+    model = TransformerLM(
+        vocab_size=cfg.vocab_size,
+        context_length=cfg.context_length,
+        d_model=cfg.d_model,
+        num_layers=cfg.num_layers,
+        num_heads=cfg.num_heads,
+        d_ff=cfg.d_ff,
+        rope_theta=cfg.rope_theta,
+        device=cfg.device,
+        dtype=DTYPES[cfg.dtype],
+    )
 
-    optimizer = AdamW(model.parameters(),
-                    lr=0.003,
-                    betas=cfg.betas,
-                    eps=float(cfg.eps),
-                    weight_decay=cfg.weight_decay)
+    optimizer = AdamW(
+        model.parameters(),
+        lr=0.003,
+        betas=cfg.betas,
+        eps=float(cfg.eps),
+        weight_decay=cfg.weight_decay,
+    )
 
-    np_arr_train_data = np.memmap(args.np_dat_train_path,
-                                dtype=np.int32,
-                                mode='r',
-                                shape=(args.total_train_tokens,))
+    np_arr_train_data = np.memmap(
+        args.np_dat_train_path, dtype=np.int32, mode="r", shape=(args.total_train_tokens,)
+    )
 
-    np_arr_valid_data = np.memmap(args.np_dat_valid_path,
-                                dtype=np.int32,
-                                mode='r',
-                                shape=(args.total_val_tokens,))
+    np_arr_valid_data = np.memmap(
+        args.np_dat_valid_path, dtype=np.int32, mode="r", shape=(args.total_val_tokens,)
+    )
 
     # weight/activation norm utils
     def get_weight_norms(model):
@@ -95,11 +100,15 @@ def train_transformer(args):
             if param.requires_grad:
                 norms[name] = param.data.norm().item()
         return norms
+
     activation_norms = {}
+
     def get_activation_norm_hook(name):
         def hook(module, input, output):
             activation_norms[name] = output.norm().item()
+
         return hook
+
     for name, module in model.named_modules():
         if isinstance(module, Linear):
             module.register_forward_hook(get_activation_norm_hook(name))
@@ -138,11 +147,13 @@ def train_transformer(args):
 
     wandb.finish()
 
+
 def _parse_only_config():
     parser = argparse.ArgumentParser(description="Training via config file only.", allow_abbrev=False)
     parser.add_argument("--config", type=Path, required=True, help="Path to train TOML config")
     parser.add_argument("--print-config", action="store_true", help="Print resolved config and exit")
     return parser.parse_args()
+
 
 def main():
     # Config-only entry point
@@ -189,5 +200,7 @@ def main():
     )
     train_transformer(ns)
 
+
 if __name__ == "__main__":
     main()
+

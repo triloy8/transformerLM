@@ -3,8 +3,8 @@ import numpy as np
 import torch
 import pytest
 
-from transformerlm.transformer.transformer_lm import TransformerLM
-from transformerlm.transformer.train_transformer_utils import (
+from transformerlm.models import TransformerLM
+from transformerlm.training import (
     cross_entropy,
     AdamW,
     lr_cosine_schedule,

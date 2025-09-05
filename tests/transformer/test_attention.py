@@ -1,8 +1,9 @@
 import torch
 import pytest
 
-from transformerlm.transformer.transformer_lm import MultiheadSelfAttentionRoPE, softmax, scaled_dot_product_attention
-from transformerlm.transformer.transformer_lm import RotaryPositionalEmbedding
+from transformerlm.models import MultiheadSelfAttentionRoPE, scaled_dot_product_attention
+from transformerlm.models import RotaryPositionalEmbedding
+from transformerlm.inference import softmax
 
 
 def test_causal_mask_invariance(device):

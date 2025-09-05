@@ -1,5 +1,5 @@
 from transformerlm.tokenizer.tokenizer import Tokenizer
-from transformerlm.transformer.transformer_lm import TransformerLM
+from transformerlm.models import TransformerLM
 from transformerlm.inference.generate import generate
 import torch
 import argparse

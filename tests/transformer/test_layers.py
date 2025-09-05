@@ -1,6 +1,6 @@
 import torch
 
-from transformerlm.transformer.transformer_lm import Linear, Embedding, RMSNorm, SwiGLU
+from transformerlm.models import Linear, Embedding, RMSNorm, SwiGLU
 
 
 def test_linear_matches_einsum(device):
