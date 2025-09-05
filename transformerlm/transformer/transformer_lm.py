@@ -119,6 +119,31 @@ def softmax(x: torch.Tensor, dim: int):
 
     return exp_x / sum_exp_x
 
+def top_p_filter(probs: torch.Tensor, p: float) -> torch.Tensor:
+    if p <= 0:
+        # one-hot at argmax
+        argmax = probs.argmax(dim=-1)
+        out = torch.zeros_like(probs)
+        out.scatter_(-1, argmax.unsqueeze(-1), 1.0)
+        return out
+    if p >= 1:
+        # renormalize defensively
+        return probs / probs.sum(dim=-1, keepdim=True)
+
+    sorted_probs, sorted_indices = torch.sort(probs, descending=True)
+    cumulative = torch.cumsum(sorted_probs, dim=-1)
+
+    cutoff = (cumulative >= p).float().argmax(dim=-1) + 1
+    filtered = torch.zeros_like(probs)
+    batch = probs.shape[0]
+    for i in range(batch):
+        k = cutoff[i].item()
+        sel = sorted_indices[i, :k]
+        sel_probs = sorted_probs[i, :k]
+        filtered[i, sel] = sel_probs
+        filtered[i] /= filtered[i].sum()
+    return filtered
+
 def scaled_dot_product_attention(Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor, mask: torch.Tensor):
     qk_score = einsum(Q, K, "batch_size ... n d_k, batch_size ... m d_k -> batch_size ... n m") / torch.sqrt(torch.tensor(Q.shape[-1]))
     masked_qk_score = qk_score.masked_fill(~mask, float('-inf'))
@@ -229,21 +254,8 @@ class TransformerLM(nn.Module):
             logits = logits[:, -1, :] / temperature
 
             q = softmax(logits, dim=-1)
-
-            sorted_q, sorted_indices = torch.sort(q, descending=True)
-            cumulative_probs = torch.cumsum(sorted_q, dim=-1)
-
-            new_probs = torch.zeros_like(q)
-
-            cutoff = (cumulative_probs >= p).float().argmax(dim=-1) + 1
-
-            for i in range(batch_size):
-                selected = sorted_indices[i, :cutoff[i]]
-                selected_probs = sorted_q[i, :cutoff[i]]
-                new_probs[i, selected] = selected_probs
-                new_probs[i] /= new_probs[i].sum()
-
-            index_next = torch.multinomial(new_probs, num_samples=1)
+            filtered = top_p_filter(q, p)
+            index_next = torch.multinomial(filtered, num_samples=1)
 
             if eos_token_id is not None:
                 index_next[finished] = eos_token_id

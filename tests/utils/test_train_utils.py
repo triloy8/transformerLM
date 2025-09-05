@@ -65,6 +65,14 @@ def test_get_batch_shapes_and_targets(tmp_path, device):
     assert torch.all(y == x + 1)
 
 
+def test_get_batch_raises_on_too_small_dataset(device):
+    import random
+    random.seed(0)
+    arr = np.arange(3, dtype=np.int32)  # too small for T=4
+    with pytest.raises(ValueError):
+        _ = get_batch(arr, batch_size=1, context_length=4, device=str(device))
+
+
 def test_checkpointing_roundtrip(tmp_path, device):
     model = TransformerLM(
         vocab_size=8,

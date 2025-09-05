@@ -1,6 +1,7 @@
 import pytest
 
 from transformerlm.tokenizer.tokenizer import Tokenizer
+from transformerlm.tokenizer.tokenizer_utils import gpt2_bytes_to_unicode
 
 
 def make_minimal_tokenizer():
@@ -51,3 +52,49 @@ def test_encode_iterable_yields_consistent_stream():
     # Equivalent to concatenated encoding
     expected = tok.encode("".join(lines))
     assert list_ids == expected
+
+
+def test_deterministic_merge_order():
+    # Craft merges where (b,c) has higher priority than (a,b)
+    vocab = {
+        0: b"a",
+        1: b"b",
+        2: b"c",
+        3: b"bc",
+        4: b"ab",
+    }
+    merges = [
+        (b"b", b"c"),  # rank 0
+        (b"a", b"b"),  # rank 1
+    ]
+    tok = Tokenizer(vocab=vocab, merges=merges, special_tokens=[])
+    ids = tok.encode("abc")
+    # Expect 'a' + 'bc' (since (b,c) has higher priority)
+    # Thus, two tokens
+    assert len(ids) == 2
+
+
+def test_tokenizer_from_files_roundtrip(tmp_path):
+    enc = gpt2_bytes_to_unicode()
+    # Build a tiny GPT-2-like vocab JSON: token_string -> index
+    def enc_str(s: bytes) -> str:
+        return "".join(enc[b] for b in s)
+
+    vocab_json = {
+        enc_str(b" "): 0,
+        enc_str(b"a"): 1,
+        enc_str(b"b"): 2,
+        enc_str(b"ab"): 3,
+    }
+    merges_txt = "a b\n"
+
+    vocab_path = tmp_path / "vocab.json"
+    merges_path = tmp_path / "merges.txt"
+    vocab_path.write_text(__import__("json").dumps(vocab_json))
+    merges_path.write_text(merges_txt)
+
+    tok = Tokenizer.from_files(str(vocab_path), str(merges_path), special_tokens=["<|eot|>"])
+    text = "a ab b"
+    ids = tok.encode(text)
+    out = tok.decode(ids)
+    assert out == text
