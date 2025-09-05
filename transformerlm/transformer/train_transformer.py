@@ -27,50 +27,6 @@ DTYPES = {
     "bfloat16": torch.bfloat16,
 }
 
-def get_args():
-    parser = argparse.ArgumentParser(
-        description="Training script hyperparameters and options."
-    )
-
-    # ===== OPTIMIZER =====
-    parser.add_argument('--betas', type=float, nargs=2, default=(0.9, 0.95), help='Adam betas (beta1, beta2)')
-    parser.add_argument('--eps', type=float, default=1e-8, help='Adam epsilon')
-    parser.add_argument('--weight_decay', type=float, default=0.1, help='Weight decay')
-    parser.add_argument('--max_learning_rate', type=float, default=3e-4, help='Maximum learning rate')
-    parser.add_argument('--min_learning_rate', type=float, default=3e-5, help='Minimum learning rate (default: 0.1 * max_learning_rate)')
-    parser.add_argument('--warmup_iters', type=int, default=10, help='Number of warmup iterations')
-    parser.add_argument('--cosine_cycle_iters', type=int, default=90, help='Number of iterations for cosine annealing')
-    parser.add_argument('--grad_clip_max_l2_norm', type=float, default=1.0, help='Maximum L2-norm for gradient clipping')
-
-    # ===== MODEL =====
-    parser.add_argument('--vocab_size', type=int, default=50257, help='Vocabulary size')
-    parser.add_argument('--context_length', type=int, default=1024, help='Max sequence/context length')
-    parser.add_argument('--d_model', type=int, default=768, help='Model dimension')
-    parser.add_argument('--num_layers', type=int, default=12, help='Number of transformer layers')
-    parser.add_argument('--num_heads', type=int, default=12, help='Number of attention heads')
-    parser.add_argument('--d_ff', type=int, default=3072, help='Feedforward hidden dimension')
-    parser.add_argument('--rope_theta', type=float, default=10000.0, help='Rotary embedding theta')
-
-    # ===== GLOBAL =====
-    parser.add_argument('--device', type=str, default='cuda', help='Device to train on (e.g., cuda, cpu)')
-    parser.add_argument('--dtype', type=str, default='float32', help='Tensor dtype (e.g., float32, bfloat16)')
-    parser.add_argument('--max_iteration', type=int, default=100000, help='Total number of iterations to train for')
-    parser.add_argument('--ckpting_save_iter', type=int, default=1000, help='Checkpoint save interval')
-    parser.add_argument('--batch_size', type=int, default=4, help='Batch size for training')
-    parser.add_argument('--max_train_iteration', type=int, default=100, help='Total number of training iterations per run')
-    parser.add_argument('--max_val_iteration', type=int, default=5, help='Total number of validation iterations per evaluation')
-    parser.add_argument('--val_freq_iteration', type=int, default=25, help='Run validation every N training iterations')
-
-    # ===== DATA / PATHS =====
-    parser.add_argument( '--runs_path', type=Path, default=Path('./runs'), help='Directory for experiment runs / checkpoints / logs')
-    parser.add_argument( '--np_dat_train_path', type=Path, default=Path('./data/TinyStoriesV2-GPT4-train.dat'), help='Memory-mapped (numpy) training dataset')
-    parser.add_argument( '--total_train_tokens', type=int, default=547_994_686, help='Total number of tokens in the training set (for progress bars / LR schedules)')
-    parser.add_argument( '--np_dat_valid_path', type=Path, default=Path('./data/TinyStoriesV2-GPT4-valid.dat'), help='Memory-mapped (numpy) validation dataset')
-    parser.add_argument( '--total_val_tokens', type=int, default=5_535_291, help='Total number of tokens in the validation set')
-
-
-    return parser.parse_args()
-
 def train_transformer(args):
     # wandb config
     run = wandb.init(
@@ -238,10 +194,6 @@ def train_transformer(args):
         train_iteration += 1
 
     wandb.finish()
-
-def main():
-    args = get_args()
-    train_transformer(args)
 
 def _parse_only_config():
     parser = argparse.ArgumentParser(description="Training via config file only.", allow_abbrev=False)

@@ -16,25 +16,6 @@ from transformerlm.config import (
     asdict_pretty,
 )
 
-
-def get_args():
-    parser = argparse.ArgumentParser(description="Process input path, vocab size, and special tokens.")
-
-    # ===== TRAIN BPE INPUTS =====
-    parser.add_argument( "--input_path", type=str, help="Path to the input file or directory")
-    parser.add_argument( "--vocab_size", type=int, help="Vocabulary size")
-    parser.add_argument( "--special_tokens", nargs="+",  type=str, help="List of special tokens (space separated)")
-
-    # ===== TRAIN BPE OUTPUTS =====
-    parser.add_argument('--merges_path', type=str, required=True, help='Output path for merges file')
-    parser.add_argument('--vocab_path', type=str, required=True, help='Output path for vocab JSON file')
-
-    
-    args = parser.parse_args()
-    args.input_path = os.path.expanduser(args.input_path)
-    
-    return args
-
 def train_bpe(args):
     gpt2_byte_encoder = gpt2_bytes_to_unicode()
     gpt2_byte_decoder = {v: k for k, v in gpt2_bytes_to_unicode().items()}

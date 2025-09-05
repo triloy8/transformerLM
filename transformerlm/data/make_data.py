@@ -10,20 +10,6 @@ from transformerlm.config import (
     asdict_pretty,
 )
 
-def get_args():
-    parser = argparse.ArgumentParser(
-        description="Tokenize a text file and save tokens as a .dat numpy array."
-    )
-
-    parser.add_argument("--input_filename", type=str, required=True, help="Path to the input .txt file")
-    parser.add_argument("--output_filename", type=str, required=True, help="Path to the output .dat file (numpy array of tokens)")
-    parser.add_argument("--vocab_path", type=str, default=str("gpt2_vocab.json"), help="Path to the vocab JSON file")
-    parser.add_argument("--merges_path", type=str, default=str("gpt2_merges.txt"), help="Path to the merges file")
-    parser.add_argument("--total_tokens", type=int, required=True, default=None, help="Total number of tokens to write")
-    parser.add_argument( "--special_tokens", nargs="+",  type=str, help="List of special tokens (space separated)")
-    
-    return parser.parse_args()
-
 def count_total_tokens(tokenizer, input_filename):
     with open(input_filename, 'r') as f:
         total_tokens = 0
