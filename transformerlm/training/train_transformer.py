@@ -93,14 +93,7 @@ def train_transformer(args):
         args.np_dat_valid_path, dtype=np.int32, mode="r", shape=(args.total_val_tokens,)
     )
 
-    # weight/activation norm utils
-    def get_weight_norms(model):
-        norms = {}
-        for name, param in model.named_parameters():
-            if param.requires_grad:
-                norms[name] = param.data.norm().item()
-        return norms
-
+    # activation norm utils
     activation_norms = {}
 
     def get_activation_norm_hook(name):

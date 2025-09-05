@@ -2,6 +2,7 @@ from typing import BinaryIO
 import regex as re
 from collections import Counter
 import os
+from transformerlm.tokenizer.pretokenize import PAT
 
 
 def find_chunk_boundaries(
@@ -55,7 +56,6 @@ def find_chunk_boundaries(
 
 def process_chunk_text(start_end, input_path, special_tokens):
     start, end = start_end
-    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
     with open(input_path, "rb") as f:
         f.seek(start)
         chunk = f.read(end - start).decode("utf-8", errors="ignore")
@@ -71,4 +71,3 @@ def process_chunk_text(start_end, input_path, special_tokens):
         pretoken_frequency_part.update(Counter(pretoken_list))
 
         return pretoken_frequency_part
-

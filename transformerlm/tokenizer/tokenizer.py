@@ -1,4 +1,4 @@
-from transformerlm.tokenizer.pretokenize import gpt2_bytes_to_unicode
+from transformerlm.tokenizer.pretokenize import gpt2_bytes_to_unicode, PAT
 from typing import Iterable, Iterator
 import json
 import regex as re
@@ -7,7 +7,6 @@ class Tokenizer:
 
     gpt2_byte_encoder = gpt2_bytes_to_unicode()
     gpt2_byte_decoder = {v: k for k, v in gpt2_bytes_to_unicode().items()}
-    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
     
     def __init__(self, 
                  vocab: dict[int, bytes], 
@@ -84,7 +83,7 @@ class Tokenizer:
             elif part in "":
                 continue
             else:
-                pretoken_list.extend(m.group(0) for m in re.finditer(self.PAT, part))
+                pretoken_list.extend(m.group(0) for m in re.finditer(PAT, part))
 
         # applying merges
         pretoken_list_merged = []
