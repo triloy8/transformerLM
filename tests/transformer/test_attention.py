@@ -55,3 +55,44 @@ def test_rope_shapes_and_norm_preservation(device):
     x_norms = torch.linalg.vector_norm(x_pairs, dim=-1)
     y_norms = torch.linalg.vector_norm(y_pairs, dim=-1)
     assert torch.allclose(x_norms, y_norms, atol=1e-5, rtol=1e-4)
+
+
+def test_end_to_end_causal_invariance_with_mhsa_rope(device):
+    d_model = 8
+    num_heads = 2  # ensures per-head dim is even
+    max_seq_len = 8
+    theta = 10_000.0
+    attn = MultiheadSelfAttentionRoPE(d_model=d_model,
+                                      num_heads=num_heads,
+                                      max_seq_len=max_seq_len,
+                                      theta=theta,
+                                      device=device)
+
+    T = 5
+    x = torch.randn(1, T, d_model, device=device)
+    tok_pos = torch.arange(T, dtype=torch.long, device=device)
+
+    out1 = attn(x, tok_pos)
+
+    i = 2
+    x2 = x.clone()
+    x2[:, i + 1 :, :] += 1.0
+    out2 = attn(x2, tok_pos)
+
+    assert torch.allclose(out1[:, : i + 1, :], out2[:, : i + 1, :], atol=1e-6, rtol=1e-5)
+
+
+def test_head_split_merge_preserves_feature_dimension(device):
+    d_model = 12
+    num_heads = 3
+    max_seq_len = 8
+    theta = 10_000.0
+    attn = MultiheadSelfAttentionRoPE(d_model=d_model,
+                                      num_heads=num_heads,
+                                      max_seq_len=max_seq_len,
+                                      theta=theta,
+                                      device=device)
+    x = torch.randn(2, 4, d_model, device=device)
+    pos = torch.arange(4, dtype=torch.long, device=device)
+    y = attn(x, pos)
+    assert y.shape == x.shape

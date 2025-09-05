@@ -36,6 +36,27 @@ def test_lr_cosine_schedule_boundaries():
     assert lr_cosine_schedule(cycle + 50, max_lr, min_lr, warmup, cycle) == pytest.approx(min_lr)
 
 
+def test_lr_cosine_schedule_warmup_zero():
+    max_lr = 1.0
+    min_lr = 0.1
+    warmup = 0
+    cycle = 10
+    # At it=0 with warmup=0, we expect max_lr
+    assert lr_cosine_schedule(0, max_lr, min_lr, warmup, cycle) == pytest.approx(max_lr)
+    # Mid-cycle returns between min and max
+    mid = lr_cosine_schedule(5, max_lr, min_lr, warmup, cycle)
+    assert min_lr < mid < max_lr
+
+
+def test_lr_cosine_schedule_cycle_zero_returns_min_beyond():
+    max_lr = 1.0
+    min_lr = 0.2
+    warmup = 0
+    cycle = 0
+    # For iterations beyond cycle, lr should be min_lr
+    assert lr_cosine_schedule(1, max_lr, min_lr, warmup, cycle) == pytest.approx(min_lr)
+
+
 def test_gradient_clipping_caps_total_norm(device):
     p1 = torch.nn.Parameter(torch.ones(3, device=device), requires_grad=True)
     p2 = torch.nn.Parameter(torch.ones(4, device=device) * 2, requires_grad=True)
@@ -107,21 +128,29 @@ def test_checkpointing_roundtrip(tmp_path, device):
         assert torch.allclose(orig_state[k], new_state[k])
 
 
-def test_adamw_single_step_matches_torch(device):
+@pytest.mark.parametrize(
+    "lr,betas,wd",
+    [
+        (1e-3, (0.9, 0.999), 0.01),
+        (5e-4, (0.8, 0.99), 0.0),
+        (1e-2, (0.95, 0.98), 0.1),
+    ],
+)
+def test_adamw_single_step_matches_torch_paramized(device, lr, betas, wd):
     # Simple 1D parameter tensor with fixed gradient
-    p_init = torch.tensor([1.0, -2.0, 3.0], device=device)
-    grad = torch.tensor([0.1, -0.2, 0.3], device=device)
+    p_init = torch.tensor([1.0, -2.0, 3.0, -4.0], device=device)
+    grad = torch.tensor([0.1, -0.2, 0.3, -0.4], device=device)
 
     # Our optimizer
     p1 = torch.nn.Parameter(p_init.clone(), requires_grad=True)
     p1.grad = grad.clone()
-    opt1 = AdamW([p1], lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01)
+    opt1 = AdamW([p1], lr=lr, betas=betas, eps=1e-8, weight_decay=wd)
     opt1.step()
 
     # Torch AdamW
     p2 = torch.nn.Parameter(p_init.clone(), requires_grad=True)
     p2.grad = grad.clone()
-    opt2 = torch.optim.AdamW([p2], lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01)
+    opt2 = torch.optim.AdamW([p2], lr=lr, betas=betas, eps=1e-8, weight_decay=wd)
     opt2.step()
 
     assert torch.allclose(p1.data, p2.data, atol=1e-7, rtol=1e-6)
