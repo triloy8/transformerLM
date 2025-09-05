@@ -9,6 +9,12 @@ from collections import Counter
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
+import json as _json  # For printing config
+
+from transformerlm.config import (
+    load_train_tokenizer_config,
+    asdict_pretty,
+)
 
 
 def get_args():
@@ -124,6 +130,28 @@ def train_bpe(args):
         json.dump(vocab, f, ensure_ascii=False, indent=4)
 
 
+def _parse_only_config():
+    parser = argparse.ArgumentParser(description="Train tokenizer via config file only.", allow_abbrev=False)
+    parser.add_argument("--config", type=str, required=True, help="Path to train-tokenizer TOML config")
+    parser.add_argument("--print-config", action="store_true", help="Print resolved config and exit")
+    return parser.parse_args()
+
+def main():
+    args_cfg = _parse_only_config()
+    cfg_dc = load_train_tokenizer_config(args_cfg.config)
+    if args_cfg.print_config:
+        print(_json.dumps(asdict_pretty(cfg_dc), indent=2))
+        return
+
+    # Build args Namespace compatible with existing train_bpe signature
+    ns = argparse.Namespace(
+        input_path=str(cfg_dc.input.input_path),
+        vocab_size=cfg_dc.input.vocab_size,
+        special_tokens=list(cfg_dc.input.special_tokens),
+        merges_path=str(cfg_dc.output.merges_path),
+        vocab_path=str(cfg_dc.output.vocab_path),
+    )
+    train_bpe(ns)
+
 if __name__ == "__main__":
-    args = get_args()
-    train_bpe(args)
+    main()

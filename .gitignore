@@ -200,7 +200,6 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 
 # Project TODOs (local planning docs)
-todo/
 .cursorignore
 .cursorindexingignore
 
@@ -213,3 +212,6 @@ __marimo__/
 /wandb/
 /data/
 /runs/
+
+# Planning
+todo/*

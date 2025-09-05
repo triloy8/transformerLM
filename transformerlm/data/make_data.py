@@ -3,6 +3,12 @@ from pathlib import Path
 import argparse
 import time
 import numpy as np
+import json
+
+from transformerlm.config import (
+    load_make_data_config,
+    asdict_pretty,
+)
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -55,11 +61,27 @@ def write_token_ids_to_memmap(tokenizer, input_filename, total_tokens, output_fi
     print(f"Done writing {total_tokens:,} tokens to {output_filename} in {total_time:.1f}s "
           f"({total_time/60:.1f} min).")
 
+def _parse_only_config():
+    parser = argparse.ArgumentParser(description="Make data via config file only.", allow_abbrev=False)
+    parser.add_argument("--config", type=str, required=True, help="Path to make-data TOML config")
+    parser.add_argument("--print-config", action="store_true", help="Print resolved config and exit")
+    return parser.parse_args()
+
+def main():
+    args_cfg = _parse_only_config()
+    cfg_dc = load_make_data_config(args_cfg.config)
+    if args_cfg.print_config:
+        print(json.dumps(asdict_pretty(cfg_dc), indent=2))
+        return
+
+    tokenizer = Tokenizer.from_files(vocab_filepath=str(cfg_dc.tokenizer.vocab_path),
+                                     merges_filepath=str(cfg_dc.tokenizer.merges_path),
+                                     special_tokens=cfg_dc.tokenizer.special_tokens)
+
+    write_token_ids_to_memmap(tokenizer,
+                              str(cfg_dc.input.input_filename),
+                              cfg_dc.input.total_tokens,
+                              str(cfg_dc.output.output_filename))
+
 if __name__ == "__main__":
-    args = get_args()
-
-    tokenizer = Tokenizer.from_files(vocab_filepath=args.vocab_path,
-                                     merges_filepath=args.merges_path,
-                                     special_tokens=["<|endoftext|>"])
-
-    write_token_ids_to_memmap(tokenizer, args.input_filename, args.total_tokens, args.output_filename)
+    main()
