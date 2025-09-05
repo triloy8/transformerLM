@@ -34,15 +34,15 @@ def test_softmax_matches_torch(device):
 
 
 def test_rope_shapes_and_norm_preservation(device):
-    # d_k must be even for pairwise rotation
+    # d_k is the full per-head feature dimension and must be even for pairwise rotation
     d_k = 4
     max_seq_len = 8
     rope = RotaryPositionalEmbedding(theta=10_000.0, d_k=d_k, max_seq_len=max_seq_len, device=device)
 
     B, T = 2, 5
-    # rope.forward expects last dim to be multiple of 2 (paired); in impl it reshapes with p=2
-    # Provide last dim = d_k * 2
-    x = torch.randn(B, T, d_k * 2, device=device)
+    # rope.forward expects last dim to be even; it internally reshapes into pairs of 2
+    # Provide last dim = d_k (full head dim)
+    x = torch.randn(B, T, d_k, device=device)
     pos = torch.arange(T, dtype=torch.long, device=device)
 
     y = rope(x, pos)
@@ -50,8 +50,8 @@ def test_rope_shapes_and_norm_preservation(device):
     assert y.device == x.device
 
     # Pairwise 2-norm preservation per (real, imag) pair
-    x_pairs = x.view(B, T, d_k, 2)
-    y_pairs = y.view(B, T, d_k, 2)
+    x_pairs = x.view(B, T, d_k // 2, 2)
+    y_pairs = y.view(B, T, d_k // 2, 2)
     x_norms = torch.linalg.vector_norm(x_pairs, dim=-1)
     y_norms = torch.linalg.vector_norm(y_pairs, dim=-1)
     assert torch.allclose(x_norms, y_norms, atol=1e-5, rtol=1e-4)
