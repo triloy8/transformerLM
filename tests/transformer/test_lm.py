@@ -91,3 +91,26 @@ def test_top_p_filter_properties(device):
     # 0.4 + 0.3 < 0.8, include 0.2 as well → three
     assert (f08 > 0).sum().item() == 3
     assert torch.allclose(f08.sum(dim=-1), torch.ones(1, device=device))
+
+
+def test_decode_p0_invariant_to_temperature(device):
+    model = make_tiny_model(device)
+    x0 = torch.randint(0, 16, (1, 3), device=device)
+    steps = 4
+    out_cold = model.decode(in_indices=x0.clone(), context_length=steps, temperature=0.5, p=0.0, eos_token_id=None)
+    out_hot = model.decode(in_indices=x0.clone(), context_length=steps, temperature=2.0, p=0.0, eos_token_id=None)
+    # Argmax is invariant to positive scaling, so sequences should match
+    assert torch.equal(out_cold, out_hot)
+
+
+def test_top_p_candidate_set_monotonic(device):
+    probs = torch.tensor([[0.5, 0.2, 0.15, 0.1, 0.05]], device=device)
+    ps = [0.1, 0.3, 0.6, 0.8, 0.95]
+    counts = []
+    for p in ps:
+        f = top_p_filter(probs, p=p)
+        counts.append(int((f > 0).sum().item()))
+        # Always renormalizes
+        assert torch.allclose(f.sum(dim=-1), torch.ones(1, device=device))
+    # Candidate set size should be non-decreasing with p
+    assert counts == sorted(counts)

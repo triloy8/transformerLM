@@ -98,3 +98,31 @@ def test_tokenizer_from_files_roundtrip(tmp_path):
     ids = tok.encode(text)
     out = tok.decode(ids)
     assert out == text
+
+
+def test_no_merge_across_special_tokens():
+    # Even if merges allow (a,b), they must not cross a special token boundary
+    vocab = {
+        0: b"a",
+        1: b"b",
+        2: b"ab",
+        3: b"<|eot|>",
+    }
+    merges = [
+        (b"a", b"b"),
+    ]
+    special = ["<|eot|>"]
+    tok = Tokenizer(vocab=vocab, merges=merges, special_tokens=special)
+
+    text = "a<|eot|>b"
+    ids = tok.encode(text)
+    # Expect exactly three tokens: 'a', special, 'b' (no merge across special)
+    assert len(ids) == 3
+    assert tok.decode(ids) == text
+
+    # Inner merges still apply on either side of the special token
+    text2 = "ab<|eot|>ab"
+    ids2 = tok.encode(text2)
+    # 'ab' merges on both sides plus the special → 3 tokens total
+    assert len(ids2) == 3
+    assert tok.decode(ids2) == text2
