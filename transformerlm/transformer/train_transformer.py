@@ -1,11 +1,11 @@
 from transformerlm.transformer.transformer_lm import (TransformerLM,
                                                       Linear)
-from transformerlm.transformer.train_transformer_utils import (AdamW,
-                                                               get_batch,
-                                                               cross_entropy,
-                                                               save_checkpoint,
-                                                               lr_cosine_schedule,
-                                                               gradient_clipping,)
+from transformerlm.training.optim import AdamW
+from transformerlm.training.data import get_batch
+from transformerlm.training.loss import cross_entropy
+from transformerlm.training.checkpoint import save_checkpoint
+from transformerlm.training.schedule import lr_cosine_schedule
+from transformerlm.training.grad import gradient_clipping
 
 from pathlib import Path
 import numpy as np
