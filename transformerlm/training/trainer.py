@@ -11,49 +11,16 @@ from transformerlm.training.grad import gradient_clipping
 from transformerlm.training.loop import train_iterations
 
 import numpy as np
-import wandb
-import datetime
 import os
 
 from transformerlm.utils.dtypes import DTYPES
+from transformerlm.logging.base import Logger
 
 
-def train_transformer(args):
-    # wandb config
-    run = wandb.init(
-        entity="yiltro8-org",
-        project="transformer_lm",
-        name=f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{wandb.util.generate_id()}",
-        config={
-            "architecture": "Transformer LM",
-            "dataset": "TinyStoriesV2-GPT4",
-            "vocab_size": args.vocab_size,
-            "context_length": args.context_length,
-            "d_model": args.d_model,
-            "num_layers": args.num_layers,
-            "num_heads": args.num_heads,
-            "d_ff": args.d_ff,
-            "rope_theta": args.rope_theta,
-            "betas": args.betas,
-            "eps": args.eps,
-            "weight_decay": args.weight_decay,
-            "grad_clip_max_l2_norm": args.grad_clip_max_l2_norm,
-            "max_learning_rate": args.max_learning_rate,
-            "min_learning_rate": args.min_learning_rate,
-            "warmup_iters": args.warmup_iters,
-            "cosine_cycle_iters": args.cosine_cycle_iters,
-            "max_train_iteration": args.max_train_iteration,
-            "max_val_iteration": args.max_val_iteration,
-            "val_freq_iteration": args.val_freq_iteration,
-            "batch_size": args.batch_size,
-            "device": args.device,
-            "dtype": args.dtype,
-            "ckpting_save_iter": args.ckpting_save_iter,
-        },
-    )
-    cfg = run.config
-
-    ckpting_save_folder = args.runs_path / run.name
+def train_transformer(args, *, logger: Logger, run_name: str):
+    # checkpoint folder based on run_name provided by logger
+    cfg = args
+    ckpting_save_folder = args.runs_path / run_name
     if not os.path.exists(ckpting_save_folder):
         os.makedirs(ckpting_save_folder)
 
@@ -99,7 +66,7 @@ def train_transformer(args):
             module.register_forward_hook(get_activation_norm_hook(name))
 
     def _log_fn(data: dict, step: int):
-        wandb.log(data, step=step)
+        logger.log(data, step=step)
 
     train_iterations(
         model,
@@ -129,6 +96,3 @@ def train_transformer(args):
         log_activation_norms=True,
         log_weight_norms=True,
     )
-
-    wandb.finish()
-

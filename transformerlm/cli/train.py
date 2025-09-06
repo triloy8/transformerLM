@@ -1,9 +1,12 @@
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 from transformerlm.config import load_train_config
 from transformerlm.training.trainer import train_transformer
 from transformerlm.cli.utils import add_config_args, load_config_or_print
+from transformerlm.logging.noop import NoOpLogger
+from transformerlm.logging.wandb_logger import WandbLogger
 
 
 def _parse_only_config():
@@ -54,7 +57,47 @@ def main():
         np_dat_valid_path=cfg_dc.data.np_dat_valid_path,
         total_val_tokens=cfg_dc.data.total_val_tokens,
     )
-    train_transformer(ns)
+    # Build run config payload (similar to prior wandb config)
+    run_config = {
+        "architecture": "Transformer LM",
+        "dataset": "TinyStoriesV2-GPT4",
+        "vocab_size": ns.vocab_size,
+        "context_length": ns.context_length,
+        "d_model": ns.d_model,
+        "num_layers": ns.num_layers,
+        "num_heads": ns.num_heads,
+        "d_ff": ns.d_ff,
+        "rope_theta": ns.rope_theta,
+        "betas": ns.betas,
+        "eps": ns.eps,
+        "weight_decay": ns.weight_decay,
+        "grad_clip_max_l2_norm": ns.grad_clip_max_l2_norm,
+        "max_learning_rate": ns.max_learning_rate,
+        "min_learning_rate": ns.min_learning_rate,
+        "warmup_iters": ns.warmup_iters,
+        "cosine_cycle_iters": ns.cosine_cycle_iters,
+        "max_train_iteration": ns.max_train_iteration,
+        "max_val_iteration": ns.max_val_iteration,
+        "val_freq_iteration": ns.val_freq_iteration,
+        "batch_size": ns.batch_size,
+        "device": ns.device,
+        "dtype": ns.dtype,
+        "ckpting_save_iter": ns.ckpting_save_iter,
+    }
+
+    # Select logger backend
+    logger = NoOpLogger()
+    if cfg_dc.wandb and cfg_dc.wandb.entity and cfg_dc.wandb.project:
+        # Stable default name; wandb may override formatting but keeps base name
+        default_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        logger = WandbLogger(entity=cfg_dc.wandb.entity, project=cfg_dc.wandb.project, name=default_name)
+
+    info = logger.start_run(run_config)
+    run_name = info.get("run_name") or datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    try:
+        train_transformer(ns, logger=logger, run_name=run_name)
+    finally:
+        logger.finish()
 
 
 if __name__ == "__main__":
