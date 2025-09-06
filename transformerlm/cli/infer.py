@@ -3,7 +3,7 @@ import argparse
 from transformerlm.config import load_infer_config
 from transformerlm.inference.predictor import infer_transformer
 from transformerlm.cli.utils import add_config_args, load_config_or_print
-from transformerlm.logging.noop import NoOpLogger
+from transformerlm.logging.console_logger import ConsoleLogger
 
 
 def _parse_only_config():
@@ -42,7 +42,7 @@ def main():
         p=cfg_dc.inference.p,
         eos_token_id=cfg_dc.inference.eos_token_id,
     )
-    logger = NoOpLogger()
+    logger = ConsoleLogger()
     output_strings = infer_transformer(ns, logger=logger)
     print(output_strings)
 

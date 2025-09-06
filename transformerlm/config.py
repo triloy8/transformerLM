@@ -64,12 +64,21 @@ class WandbConfig:
 
 
 @dataclass
+class LoggingConfig:
+    backend: Optional[str] = None  # "console" | "wandb" | "noop" | "jsonl"
+    run_name: Optional[str] = None
+    architecture: Optional[str] = None
+    dataset: Optional[str] = None
+
+
+@dataclass
 class TrainConfig:
     model: ModelConfig
     optimizer: OptimizerConfig
     training: TrainingConfig
     data: DataConfig
     wandb: Optional[WandbConfig] = None
+    logging: Optional[LoggingConfig] = None
 
 
 @dataclass
@@ -98,6 +107,7 @@ class InferConfig:
     model: ModelConfig
     checkpoint: CheckpointConfig
     inference: InferenceConfig
+    logging: Optional[LoggingConfig] = None
 
 
 @dataclass
@@ -228,6 +238,7 @@ def load_train_config(path: Path | str) -> TrainConfig:
     t = cfg["training"]
     d = cfg["data"]
     w = cfg.get("wandb", {})
+    lg = cfg.get("logging", {})
 
     model = ModelConfig(
         vocab_size=int(m["vocab_size"]),
@@ -273,13 +284,21 @@ def load_train_config(path: Path | str) -> TrainConfig:
             architecture=w.get("architecture"),
             dataset=w.get("dataset"),
         )
+    logging = None
+    if lg:
+        logging = LoggingConfig(
+            backend=lg.get("backend"),
+            run_name=lg.get("run_name"),
+            architecture=lg.get("architecture"),
+            dataset=lg.get("dataset"),
+        )
 
     _validate_model(model)
     _validate_optimizer(optimizer)
     _validate_training(training)
     _validate_data(data)
 
-    return TrainConfig(model=model, optimizer=optimizer, training=training, data=data, wandb=wandb)
+    return TrainConfig(model=model, optimizer=optimizer, training=training, data=data, wandb=wandb, logging=logging)
 
 
 def load_infer_config(path: Path | str) -> InferConfig:
@@ -289,6 +308,7 @@ def load_infer_config(path: Path | str) -> InferConfig:
     m = cfg["model"]
     c = cfg["checkpoint"]
     i = cfg["inference"]
+    lg = cfg.get("logging", {})
 
     tokenizer = TokenizerConfig(
         merges_path=_as_path(tok["merges_path"]),
@@ -320,7 +340,15 @@ def load_infer_config(path: Path | str) -> InferConfig:
     if not checkpoint.ckpt_path.exists():
         raise FileNotFoundError(f"ckpt_path not found: {checkpoint.ckpt_path}")
 
-    return InferConfig(tokenizer=tokenizer, model=model, checkpoint=checkpoint, inference=inference)
+    logging = None
+    if lg:
+        logging = LoggingConfig(
+            backend=lg.get("backend"),
+            run_name=lg.get("run_name"),
+            architecture=lg.get("architecture"),
+            dataset=lg.get("dataset"),
+        )
+    return InferConfig(tokenizer=tokenizer, model=model, checkpoint=checkpoint, inference=inference, logging=logging)
 
 
 def load_make_data_config(path: Path | str) -> MakeDataConfig:

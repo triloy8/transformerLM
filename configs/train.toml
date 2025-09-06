@@ -33,8 +33,7 @@ total_train_tokens = 547994686
 np_dat_valid_path = "./data/TinyStoriesV2-GPT4-valid.dat"
 total_val_tokens = 5535291
 
-[wandb]
-entity = "yiltro8-org"
-project = "transformer_lm"
+[logging]
+backend = "console"
 architecture = "TransformerLM"
 dataset = "TinyStoriesV2-GPT4"

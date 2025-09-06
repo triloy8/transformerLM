@@ -5,7 +5,7 @@ from datetime import datetime
 from transformerlm.config import load_train_config
 from transformerlm.training.trainer import train_transformer
 from transformerlm.cli.utils import add_config_args, load_config_or_print
-from transformerlm.logging.noop import NoOpLogger
+from transformerlm.logging.console_logger import ConsoleLogger
 from transformerlm.logging.wandb_logger import WandbLogger
 
 
@@ -88,12 +88,25 @@ def main():
         if getattr(cfg_dc.wandb, "dataset", None):
             run_config["dataset"] = cfg_dc.wandb.dataset
 
-    # Select logger backend
-    logger = NoOpLogger()
-    if cfg_dc.wandb and cfg_dc.wandb.entity and cfg_dc.wandb.project:
-        # Stable default name; wandb may override formatting but keeps base name
-        default_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        logger = WandbLogger(entity=cfg_dc.wandb.entity, project=cfg_dc.wandb.project, name=default_name)
+    # Select logger backend (prefer [logging], default to console)
+    logger = ConsoleLogger()
+    if getattr(cfg_dc, "logging", None) and cfg_dc.logging and cfg_dc.logging.backend:
+        backend = (cfg_dc.logging.backend or "console").lower()
+        if backend == "console":
+            logger = ConsoleLogger()
+        elif backend == "wandb":
+            # For optional wandb usage, try using legacy [wandb] fields if present
+            entity = getattr(cfg_dc.wandb, "entity", None) if getattr(cfg_dc, "wandb", None) else None
+            project = getattr(cfg_dc.wandb, "project", None) if getattr(cfg_dc, "wandb", None) else None
+            default_name = (cfg_dc.logging.run_name or datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+            logger = WandbLogger(entity=entity, project=project, name=default_name)
+
+    # Optionally include metadata from [logging]
+    if getattr(cfg_dc, "logging", None):
+        if cfg_dc.logging.architecture:
+            run_config["architecture"] = cfg_dc.logging.architecture
+        if cfg_dc.logging.dataset:
+            run_config["dataset"] = cfg_dc.logging.dataset
 
     info = logger.start_run(run_config)
     run_name = info.get("run_name") or datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
