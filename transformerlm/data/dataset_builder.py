@@ -24,9 +24,6 @@ def count_total_tokens(tokenizer, input_filename, *, logger: Optional[Logger] = 
                             "metrics.tokens_per_sec": float(1_000_000 / interval) if interval > 0 else float("inf"),
                         }
                     )
-                else:
-                    print(f"{total_tokens:,} tokens counted... "
-                          f"({elapsed:.1f}s total, {interval:.1f}s since last million)")
                 last_time = now
 
         total_elapsed = time.time() - start_time
@@ -39,8 +36,6 @@ def count_total_tokens(tokenizer, input_filename, *, logger: Optional[Logger] = 
                     "metrics.duration_s": float(total_elapsed),
                 }
             )
-        else:
-            print(f"Total tokens: {total_tokens:,} ({total_elapsed:.1f}s)")
 
 
 def write_token_ids_to_memmap(tokenizer, input_filename, total_tokens, output_filename, dtype=np.int32, *, logger: Optional[Logger] = None):
@@ -63,9 +58,6 @@ def write_token_ids_to_memmap(tokenizer, input_filename, total_tokens, output_fi
                             "params.dtype": str(dtype),
                         }
                     )
-                else:
-                    print(f"Wrote {i:,} tokens... "
-                          f"({elapsed:.1f}s total, {interval:.1f}s since last million)")
                 last_time = now
     arr.flush()
     total_time = time.time() - start_time
@@ -80,6 +72,3 @@ def write_token_ids_to_memmap(tokenizer, input_filename, total_tokens, output_fi
                 "params.shape": f"({total_tokens},)",
             }
         )
-    else:
-        print(f"Done writing {total_tokens:,} tokens to {output_filename} in {total_time:.1f}s "
-              f"({total_time/60:.1f} min).")

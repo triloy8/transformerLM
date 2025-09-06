@@ -43,8 +43,7 @@ def main():
         eos_token_id=cfg_dc.inference.eos_token_id,
     )
     logger = ConsoleLogger()
-    output_strings = infer_transformer(ns, logger=logger)
-    print(output_strings)
+    _ = infer_transformer(ns, logger=logger)
 
 
 if __name__ == "__main__":
