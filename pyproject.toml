@@ -28,7 +28,7 @@ ignore = [
 ]
 
 [project.scripts]
-transformerlm-train = "transformerlm.training.train_transformer:main"
-transformerlm-infer = "transformerlm.inference.infer_transformer:main"
-transformerlm-make-data = "transformerlm.data.make_data:main"
-transformerlm-train-tokenizer = "transformerlm.tokenizer.train_tokenizer:main"
+transformerlm-train = "transformerlm.cli.train:main"
+transformerlm-infer = "transformerlm.cli.infer:main"
+transformerlm-make-data = "transformerlm.cli.make_data:main"
+transformerlm-train-tokenizer = "transformerlm.cli.train_tokenizer:main"
