@@ -8,7 +8,7 @@ from transformerlm.training.loss import cross_entropy
 from transformerlm.training.checkpoint import save_checkpoint
 from transformerlm.training.schedule import lr_cosine_schedule
 from transformerlm.training.grad import gradient_clipping
-from transformerlm.training.loop import train_iterations
+from transformerlm.training.loop import train_loop
 
 import numpy as np
 import os
@@ -65,10 +65,7 @@ def train_transformer(args, *, logger: Logger, run_name: str):
         if isinstance(module, Linear):
             module.register_forward_hook(get_activation_norm_hook(name))
 
-    def _log_fn(data: dict, step: int):
-        logger.log(data, step=step)
-
-    train_iterations(
+    train_loop(
         model,
         optimizer,
         np_arr_train_data=np_arr_train_data,
@@ -91,7 +88,7 @@ def train_transformer(args, *, logger: Logger, run_name: str):
         lr_cosine_schedule=lr_cosine_schedule,
         gradient_clipping=gradient_clipping,
         save_checkpoint=save_checkpoint,
-        log=_log_fn,
+        logger=logger,
         activation_norms=activation_norms,
         log_activation_norms=True,
         log_weight_norms=True,

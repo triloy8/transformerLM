@@ -57,10 +57,8 @@ def main():
         np_dat_valid_path=cfg_dc.data.np_dat_valid_path,
         total_val_tokens=cfg_dc.data.total_val_tokens,
     )
-    # Build run config payload (similar to prior wandb config)
+    # Build run config payload (optionally include wandb.architecture/dataset)
     run_config = {
-        "architecture": "Transformer LM",
-        "dataset": "TinyStoriesV2-GPT4",
         "vocab_size": ns.vocab_size,
         "context_length": ns.context_length,
         "d_model": ns.d_model,
@@ -84,6 +82,11 @@ def main():
         "dtype": ns.dtype,
         "ckpting_save_iter": ns.ckpting_save_iter,
     }
+    if cfg_dc.wandb:
+        if getattr(cfg_dc.wandb, "architecture", None):
+            run_config["architecture"] = cfg_dc.wandb.architecture
+        if getattr(cfg_dc.wandb, "dataset", None):
+            run_config["dataset"] = cfg_dc.wandb.dataset
 
     # Select logger backend
     logger = NoOpLogger()

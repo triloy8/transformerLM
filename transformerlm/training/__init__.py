@@ -1,4 +1,4 @@
-from .loop import train_iterations
+from .loop import train_loop
 from .optim import AdamW
 from .schedule import lr_cosine_schedule
 from .checkpoint import save_checkpoint, load_checkpoint
@@ -7,7 +7,7 @@ from .loss import cross_entropy
 from .data import get_batch
 
 __all__ = [
-    "train_iterations",
+    "train_loop",
     "AdamW",
     "lr_cosine_schedule",
     "save_checkpoint",

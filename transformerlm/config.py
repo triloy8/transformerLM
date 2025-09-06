@@ -59,6 +59,8 @@ class DataConfig:
 class WandbConfig:
     entity: Optional[str] = None
     project: Optional[str] = None
+    architecture: Optional[str] = None
+    dataset: Optional[str] = None
 
 
 @dataclass
@@ -265,7 +267,12 @@ def load_train_config(path: Path | str) -> TrainConfig:
     )
     wandb = None
     if w:
-        wandb = WandbConfig(entity=w.get("entity"), project=w.get("project"))
+        wandb = WandbConfig(
+            entity=w.get("entity"),
+            project=w.get("project"),
+            architecture=w.get("architecture"),
+            dataset=w.get("dataset"),
+        )
 
     _validate_model(model)
     _validate_optimizer(optimizer)
@@ -381,4 +388,3 @@ def asdict_pretty(dc) -> Dict[str, Any]:
             return [walk(v) for v in x]
         return _stringify(x)
     return walk(d)
-
