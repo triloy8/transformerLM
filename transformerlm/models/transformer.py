@@ -3,7 +3,6 @@ import torch.nn as nn
 
 from transformerlm.models.layers import Embedding, RMSNorm, SwiGLU, Linear
 from transformerlm.models.attention import MultiheadSelfAttentionRoPE
-from transformerlm.inference.sampling import softmax, top_p_filter
 
 
 class TransformerBlock(nn.Module):
@@ -38,26 +37,4 @@ class TransformerLM(nn.Module):
         logits = self.lm_head(normed_output_seq)
         return logits
 
-    @torch.no_grad()
-    def decode(self, in_indices: torch.Tensor, context_length: int | None = None, temperature=1.0, p=0.0, eos_token_id=None):
-        batch_size = in_indices.shape[0]
-        device = in_indices.device
-        finished = torch.zeros(batch_size, dtype=torch.bool, device=device)
-        ctx = self.context_length if context_length is None else context_length
-
-        for _ in range(ctx):
-            context_indices = in_indices if in_indices.shape[1] <= ctx else in_indices[:, -ctx:]
-            logits = self(context_indices)
-            logits = logits[:, -1, :] / temperature
-            q = softmax(logits, dim=-1)
-            filtered = top_p_filter(q, p)
-            index_next = torch.multinomial(filtered, num_samples=1)
-            if eos_token_id is not None:
-                index_next[finished] = eos_token_id
-            in_indices = torch.cat([in_indices, index_next], dim=1)
-            if eos_token_id is not None:
-                finished = finished | (index_next.squeeze(1) == eos_token_id)
-                if finished.all():
-                    break
-        return in_indices
-
+    # Note: Decoding is done via `transformerlm.inference.generate.generate`.

@@ -1,7 +1,7 @@
 import torch
 
 from transformerlm.models import TransformerLM
-from transformerlm.inference import top_p_filter
+from transformerlm.inference import top_p_filter, generate
 
 
 def make_tiny_model(device):
@@ -26,29 +26,29 @@ def test_forward_shape(device):
     assert logits.shape == (B, T, 16)
 
 
-def test_decode_grows_by_steps_without_eos(device):
+def test_generate_grows_by_steps_without_eos(device):
     model = make_tiny_model(device)
     B, T0 = 1, 3
     x0 = torch.randint(0, 16, (B, T0), device=device)
 
     steps = 5
-    out = model.decode(in_indices=x0.clone(), context_length=steps, temperature=1.0, p=0.8, eos_token_id=None)
+    out = generate(model, in_indices=x0.clone(), steps=steps, temperature=1.0, p=0.8, eos_token_id=None)
     assert out.shape[1] == T0 + steps
 
 
-def test_decode_deterministic_with_p_zero(device):
+def test_generate_deterministic_with_p_zero(device):
     model = make_tiny_model(device)
     B, T0 = 1, 3
     x0 = torch.randint(0, 16, (B, T0), device=device)
 
     steps = 4
-    out1 = model.decode(in_indices=x0.clone(), context_length=steps, temperature=1.0, p=0.0, eos_token_id=None)
-    out2 = model.decode(in_indices=x0.clone(), context_length=steps, temperature=1.0, p=0.0, eos_token_id=None)
+    out1 = generate(model, in_indices=x0.clone(), steps=steps, temperature=1.0, p=0.0, eos_token_id=None)
+    out2 = generate(model, in_indices=x0.clone(), steps=steps, temperature=1.0, p=0.0, eos_token_id=None)
     # With p=0, sampling reduces to argmax → deterministic
     assert torch.equal(out1, out2)
 
 
-def test_decode_early_stop_on_eos_with_argmax(monkeypatch, device):
+def test_generate_early_stop_on_eos_with_argmax(monkeypatch, device):
     model = make_tiny_model(device)
     eos_id = 0
 
@@ -64,7 +64,7 @@ def test_decode_early_stop_on_eos_with_argmax(monkeypatch, device):
     monkeypatch.setattr(TransformerLM, "forward", fake_forward, raising=True)
 
     x0 = torch.randint(0, 16, (1, 3), device=device)
-    out = model.decode(in_indices=x0.clone(), context_length=10, temperature=1.0, p=0.0, eos_token_id=eos_id)
+    out = generate(model, in_indices=x0.clone(), steps=10, temperature=1.0, p=0.0, eos_token_id=eos_id)
     # Should stop after appending eos once
     assert out.shape[1] == x0.shape[1] + 1
     assert out[0, -1].item() == eos_id
@@ -93,12 +93,12 @@ def test_top_p_filter_properties(device):
     assert torch.allclose(f08.sum(dim=-1), torch.ones(1, device=device))
 
 
-def test_decode_p0_invariant_to_temperature(device):
+def test_generate_p0_invariant_to_temperature(device):
     model = make_tiny_model(device)
     x0 = torch.randint(0, 16, (1, 3), device=device)
     steps = 4
-    out_cold = model.decode(in_indices=x0.clone(), context_length=steps, temperature=0.5, p=0.0, eos_token_id=None)
-    out_hot = model.decode(in_indices=x0.clone(), context_length=steps, temperature=2.0, p=0.0, eos_token_id=None)
+    out_cold = generate(model, in_indices=x0.clone(), steps=steps, temperature=0.5, p=0.0, eos_token_id=None)
+    out_hot = generate(model, in_indices=x0.clone(), steps=steps, temperature=2.0, p=0.0, eos_token_id=None)
     # Argmax is invariant to positive scaling, so sequences should match
     assert torch.equal(out_cold, out_hot)
 
