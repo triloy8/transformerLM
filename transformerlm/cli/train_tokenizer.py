@@ -3,6 +3,7 @@ import argparse
 from transformerlm.config import load_train_tokenizer_config
 from transformerlm.tokenizer.bpe_trainer import train_bpe
 from transformerlm.cli.utils import add_config_args, load_config_or_print
+from transformerlm.logging.noop import NoOpLogger
 
 
 def _parse_only_config():
@@ -25,7 +26,8 @@ def main():
         merges_path=str(cfg_dc.output.merges_path),
         vocab_path=str(cfg_dc.output.vocab_path),
     )
-    train_bpe(ns)
+    logger = NoOpLogger()
+    train_bpe(ns, logger=logger)
 
 
 if __name__ == "__main__":

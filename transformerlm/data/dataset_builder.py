@@ -1,8 +1,10 @@
 import time
 import numpy as np
+from typing import Optional
+from transformerlm.logging.base import Logger
 
 
-def count_total_tokens(tokenizer, input_filename):
+def count_total_tokens(tokenizer, input_filename, *, logger: Optional[Logger] = None):
     with open(input_filename, 'r') as f:
         total_tokens = 0
         start_time = time.time()
@@ -14,14 +16,34 @@ def count_total_tokens(tokenizer, input_filename):
                 now = time.time()
                 elapsed = now - start_time
                 interval = now - last_time
-                print(f"{total_tokens:,} tokens counted... "
-                    f"({elapsed:.1f}s total, {interval:.1f}s since last million)")
+                if logger is not None:
+                    logger.log(
+                        {
+                            "phase": "data",
+                            "metrics.tokens_processed": int(total_tokens),
+                            "metrics.tokens_per_sec": float(1_000_000 / interval) if interval > 0 else float("inf"),
+                        }
+                    )
+                else:
+                    print(f"{total_tokens:,} tokens counted... "
+                          f"({elapsed:.1f}s total, {interval:.1f}s since last million)")
                 last_time = now
 
-        print(f"Total tokens: {total_tokens:,} ({time.time() - start_time:.1f}s)")
+        total_elapsed = time.time() - start_time
+        if logger is not None:
+            logger.log(
+                {
+                    "phase": "data",
+                    "event": "finalize",
+                    "metrics.total_tokens": int(total_tokens),
+                    "metrics.duration_s": float(total_elapsed),
+                }
+            )
+        else:
+            print(f"Total tokens: {total_tokens:,} ({total_elapsed:.1f}s)")
 
 
-def write_token_ids_to_memmap(tokenizer, input_filename, total_tokens, output_filename, dtype=np.int32):
+def write_token_ids_to_memmap(tokenizer, input_filename, total_tokens, output_filename, dtype=np.int32, *, logger: Optional[Logger] = None):
     arr = np.memmap(output_filename, dtype=dtype, mode='w+', shape=(total_tokens,))
     with open(input_filename, 'r') as f:
         start_time = time.time()
@@ -32,10 +54,32 @@ def write_token_ids_to_memmap(tokenizer, input_filename, total_tokens, output_fi
                 now = time.time()
                 elapsed = now - start_time
                 interval = now - last_time
-                print(f"Wrote {i:,} tokens... "
-                      f"({elapsed:.1f}s total, {interval:.1f}s since last million)")
+                if logger is not None:
+                    logger.log(
+                        {
+                            "phase": "data",
+                            "metrics.tokens_processed": int(i),
+                            "metrics.tokens_per_sec": float(1_000_000 / interval) if interval > 0 else float("inf"),
+                            "params.dtype": str(dtype),
+                        }
+                    )
+                else:
+                    print(f"Wrote {i:,} tokens... "
+                          f"({elapsed:.1f}s total, {interval:.1f}s since last million)")
                 last_time = now
     arr.flush()
     total_time = time.time() - start_time
-    print(f"Done writing {total_tokens:,} tokens to {output_filename} in {total_time:.1f}s "
-          f"({total_time/60:.1f} min).")
+    if logger is not None:
+        logger.log(
+            {
+                "phase": "data",
+                "event": "finalize",
+                "metrics.total_tokens": int(total_tokens),
+                "metrics.duration_s": float(total_time),
+                "params.dtype": str(dtype),
+                "params.shape": f"({total_tokens},)",
+            }
+        )
+    else:
+        print(f"Done writing {total_tokens:,} tokens to {output_filename} in {total_time:.1f}s "
+              f"({total_time/60:.1f} min).")

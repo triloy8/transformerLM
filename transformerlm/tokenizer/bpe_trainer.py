@@ -8,9 +8,12 @@ from collections import Counter
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
+import time
+from typing import Optional
+from transformerlm.logging.base import Logger
 
 
-def train_bpe(args):
+def train_bpe(args, *, logger: Optional[Logger] = None):
     gpt2_byte_encoder = gpt2_bytes_to_unicode()
     gpt2_byte_decoder = {v: k for k, v in gpt2_bytes_to_unicode().items()}
 
@@ -47,6 +50,7 @@ def train_bpe(args):
     vocab = initial_vocab
     iter = 0
     iter_max = args.vocab_size - len(list(vocab.keys()))
+    last_log = time.time()
     while iter < iter_max:
         # compute pair frequency
         pair_frequency = {}
@@ -88,6 +92,20 @@ def train_bpe(args):
         pretoken_frequency_tuple = dict(new_pretoken_frequency_tuple)
 
         iter += 1
+        # periodic logging
+        if logger is not None and iter % 100 == 0:
+            now = time.time()
+            dt = now - last_log
+            last_log = now
+            logger.log(
+                {
+                    "phase": "tokenizer",
+                    "metrics.merges_applied": int(iter),
+                    "metrics.vocab_size": int(len(vocab) + len(merges)),
+                    "metrics.merges_per_sec": float(100.0 / dt) if dt > 0 else float("inf"),
+                },
+                step=iter,
+            )
 
     # - return vocab w/ additional merges and merges as bytes
     initial_vocab_size = len(list(vocab.keys()))
@@ -103,3 +121,20 @@ def train_bpe(args):
 
     with open(args.vocab_path, "w", encoding="utf-8") as f:
         json.dump(vocab, f, ensure_ascii=False, indent=4)
+
+    # Log final artifacts
+    if logger is not None:
+        try:
+            logger.log(
+                {
+                    "phase": "tokenizer",
+                    "event": "finalize",
+                    "metrics.merges_applied": int(iter),
+                    "metrics.vocab_size": int(len(vocab)),
+                },
+                step=iter,
+            )
+            logger.log_artifact(str(args.merges_path), name=str(args.merges_path), type_="tokenizer")
+            logger.log_artifact(str(args.vocab_path), name=str(args.vocab_path), type_="tokenizer")
+        except Exception:
+            pass

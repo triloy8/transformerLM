@@ -4,6 +4,7 @@ from transformerlm.config import load_make_data_config
 from transformerlm.tokenizer.tokenizer import Tokenizer
 from transformerlm.data.dataset_builder import write_token_ids_to_memmap
 from transformerlm.cli.utils import add_config_args, load_config_or_print
+from transformerlm.logging.noop import NoOpLogger
 
 
 def _parse_only_config():
@@ -24,11 +25,13 @@ def main():
         special_tokens=cfg_dc.tokenizer.special_tokens,
     )
 
+    logger = NoOpLogger()
     write_token_ids_to_memmap(
         tokenizer,
         str(cfg_dc.input.input_filename),
         cfg_dc.input.total_tokens,
         str(cfg_dc.output.output_filename),
+        logger=logger,
     )
 
 
