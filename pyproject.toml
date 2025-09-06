@@ -32,3 +32,32 @@ transformerlm-train = "transformerlm.cli.train:main"
 transformerlm-infer = "transformerlm.cli.infer:main"
 transformerlm-make-data = "transformerlm.cli.make_data:main"
 transformerlm-train-tokenizer = "transformerlm.cli.train_tokenizer:main"
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["transformerlm*"]
+exclude = [
+  "tests*",
+  "runs*",
+  "todo*",
+  "wandb*",
+  "configs*",
+  "scripts*",
+  "data*",
+  ".venv*",
+  ".*",
+]
+
+[tool.pytest.ini_options]
+addopts = ["-q"]
+markers = [
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "gpu: requires CUDA/GPU",
+]
