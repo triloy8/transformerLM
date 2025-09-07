@@ -10,10 +10,10 @@ from transformerlm.config import load_bench_infer_config
 from transformerlm.tokenizer.tokenizer import Tokenizer
 from transformerlm.models import TransformerLM
 from transformerlm.utils.dtypes import DTYPES
-from transformerlm.inference.generate import generate
+from transformerlm.training.loss import cross_entropy
 from transformerlm.logging.console_logger import ConsoleLogger
 
-from .common import measure, mean
+from .common import measure, mean, stddev
 
 
 def _parse_only_config():
@@ -65,6 +65,7 @@ def main():
         "batch_size": batch_size,
         "prompt_len_avg": float(mean([float(x) for x in prompt_lens])),
         "prompt_count": batch_size,
+        "backward": bool(cfg.benchmark.backward),
         # model
         "vocab_size": cfg.model.vocab_size,
         "context_length": cfg.model.context_length,
@@ -85,17 +86,22 @@ def main():
     }
     info = logger.start_run(run_config)
 
-    # Warmup
+    # Warmup: run the same loop shape as the timed section
+    inputs = in_indices[:, :-1]
+    targets = in_indices[:, 1:]
     for _ in range(cfg.benchmark.warmup):
-        _ = generate(
-            model,
-            in_indices=in_indices,
-            steps=cfg.benchmark.steps,
-            temperature=cfg.inference.temperature,
-            p=cfg.inference.p,
-            eos_token_id=cfg.inference.eos_token_id,
-            context_length=cfg.model.context_length,
-        )
+        if not cfg.benchmark.backward:
+            model.eval()
+            with torch.no_grad():
+                for _ in range(cfg.benchmark.steps):
+                    _ = model(inputs)
+        else:
+            model.train()
+            for _ in range(cfg.benchmark.steps):
+                model.zero_grad(set_to_none=True)
+                logits = model(inputs)
+                loss = cross_entropy(logits, targets).mean()
+                loss.backward()
 
     # Timed repeats
     latencies_ms: List[float] = []
@@ -103,24 +109,31 @@ def main():
 
     for r in range(cfg.benchmark.repeats):
         def _run():
-            return generate(
-                model,
-                in_indices=in_indices,
-                steps=cfg.benchmark.steps,
-                temperature=cfg.inference.temperature,
-                p=cfg.inference.p,
-                eos_token_id=cfg.inference.eos_token_id,
-                context_length=cfg.model.context_length,
-            )
+            # Standardized micro-bench: repeat forward (and optional backward) on fixed inputs
+            if not cfg.benchmark.backward:
+                model.eval()
+                with torch.no_grad():
+                    last_logits = None
+                    for _ in range(cfg.benchmark.steps):
+                        last_logits = model(inputs)
+                    return last_logits
+            else:
+                model.train()
+                last_logits = None
+                for _ in range(cfg.benchmark.steps):
+                    model.zero_grad(set_to_none=True)
+                    last_logits = model(inputs)
+                    loss = cross_entropy(last_logits, targets).mean()
+                    loss.backward()
+                return last_logits
 
-        out, dt = measure(cfg.model.device, _run, synchronize=cfg.benchmark.synchronize)
-        # new_tokens: out has shape (B, T_out); in_indices had T_in
-        T_out = int(out.shape[1])
+        _, dt = measure(cfg.model.device, _run, synchronize=cfg.benchmark.synchronize)
+        # Processed tokens: per iteration, each sequence processes (T_in - 1) positions
         T_in = int(in_indices.shape[1])
-        new_tokens = (T_out - T_in) * batch_size
+        processed_tokens = max(T_in - 1, 0) * batch_size * int(cfg.benchmark.steps)
 
         lat_ms = dt * 1000.0
-        tps = (float(new_tokens) / dt) if dt > 0 else 0.0
+        tps = (float(processed_tokens) / dt) if dt > 0 else 0.0
         latencies_ms.append(lat_ms)
         tokens_per_sec.append(tps)
 
@@ -129,8 +142,9 @@ def main():
                 "phase": "bench_infer",
                 "metrics.latency_ms": lat_ms,
                 "metrics.tokens_sec": tps,
-                "metrics.new_tokens": int(new_tokens),
+                "metrics.processed_tokens": int(processed_tokens),
                 "metrics.batch_size": int(batch_size),
+                "metrics.backward": bool(cfg.benchmark.backward),
             },
             step=r,
         )
@@ -142,6 +156,8 @@ def main():
             "event": "summary",
             "metrics.latency_ms.mean": mean(latencies_ms),
             "metrics.tokens_sec.mean": mean(tokens_per_sec),
+            "metrics.latency_ms.stddev": stddev(latencies_ms),
+            "metrics.tokens_sec.stddev": stddev(tokens_per_sec),
             "metrics.iters": int(cfg.benchmark.repeats),
         }
     )

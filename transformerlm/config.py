@@ -428,6 +428,7 @@ class BenchParams:
     repeats: int
     steps: int
     synchronize: bool = True
+    backward: bool = False
 
 
 @dataclass
@@ -511,6 +512,7 @@ def load_bench_infer_config(path: Path | str) -> BenchInferConfig:
         repeats=int(b.get("repeats", 5)),
         steps=int(b.get("steps", model.context_length)),
         synchronize=bool(b.get("synchronize", True)),
+        backward=bool(b.get("backward", False)),
     )
 
     _validate_tokenizer(tokenizer)

@@ -31,3 +31,10 @@ def measure(device: str, fn: Callable[[], T], *, synchronize: bool = True) -> Tu
 
 def mean(xs: list[float]) -> float:
     return sum(xs) / len(xs) if xs else 0.0
+
+
+def stddev(xs: list[float]) -> float:
+    if not xs:
+        return 0.0
+    m = mean(xs)
+    return (sum((x - m) ** 2 for x in xs) / len(xs)) ** 0.5
