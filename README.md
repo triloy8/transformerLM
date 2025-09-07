@@ -115,6 +115,20 @@ uv run transformerlm-make-data --config configs/make_data.toml
 uv run transformerlm-train --config configs/train.toml --print-config
 ```
 
+## Benchmarking
+
+- Benchmarks live under `benchmarking/` and are TOML‑driven, similar to the CLI tools.
+- Use the sample configs in `configs/` and run the scripts directly.
+- Results are logged with the `ConsoleLogger` to stdout; no files are written.
+
+- Inference latency:
+  - Run: `python -m benchmarking.bench_infer_latency --config configs/bench_infer.toml`
+  - Measures warmup and repeated decode steps (tokens/sec, latency).
+
+- Tokenizer throughput:
+  - Run: `python -m benchmarking.bench_tokenizer --config configs/bench_tokenizer.toml`
+  - Measures encode and decode throughput over given texts.
+
 ## Tests
 
 - Run tests: `uv run pytest`

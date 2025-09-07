@@ -416,3 +416,156 @@ def asdict_pretty(dc) -> Dict[str, Any]:
             return [walk(v) for v in x]
         return _stringify(x)
     return walk(d)
+
+# ===== Benchmark Configs =====
+from dataclasses import dataclass
+from typing import List, Optional
+
+
+@dataclass
+class BenchParams:
+    warmup: int
+    repeats: int
+    steps: int
+    synchronize: bool = True
+
+
+@dataclass
+class BenchInferConfig:
+    tokenizer: TokenizerConfig
+    model: ModelConfig
+    checkpoint: CheckpointConfig
+    inference: InferenceConfig
+    benchmark: BenchParams
+    logging: Optional[LoggingConfig] = None
+
+
+@dataclass
+class BenchTokenizerInput:
+    text_list: List[str]
+
+
+@dataclass
+class BenchTokenizerParams:
+    repeats: int
+
+
+@dataclass
+class BenchTokenizerConfig:
+    tokenizer: TokenizerConfig
+    input: BenchTokenizerInput
+    benchmark: BenchTokenizerParams
+    logging: Optional[LoggingConfig] = None
+
+
+def _validate_bench_params(b: BenchParams) -> None:
+    if b.warmup < 0:
+        raise ValueError("warmup must be >= 0")
+    if b.repeats <= 0:
+        raise ValueError("repeats must be > 0")
+    if b.steps <= 0:
+        raise ValueError("steps must be > 0")
+
+
+def _validate_tokenizer_bench_input(i: BenchTokenizerInput) -> None:
+    if not i.text_list:
+        raise ValueError("input.text_list must not be empty")
+
+
+def load_bench_infer_config(path: Path | str) -> BenchInferConfig:
+    cfg = _load_toml(_as_path(path))
+    _expect_keys(cfg, "root", ["tokenizer", "model", "checkpoint", "inference", "benchmark"])
+
+    tok = cfg["tokenizer"]
+    m = cfg["model"]
+    c = cfg["checkpoint"]
+    i = cfg["inference"]
+    b = cfg["benchmark"]
+    lg = cfg.get("logging", {})
+
+    tokenizer = TokenizerConfig(
+        merges_path=_as_path(tok["merges_path"]),
+        vocab_path=_as_path(tok["vocab_path"]),
+        special_tokens=list(tok.get("special_tokens", [])),
+    )
+    model = ModelConfig(
+        vocab_size=int(m["vocab_size"]),
+        context_length=int(m["context_length"]),
+        d_model=int(m["d_model"]),
+        num_layers=int(m["num_layers"]),
+        num_heads=int(m["num_heads"]),
+        d_ff=int(m["d_ff"]),
+        rope_theta=float(m["rope_theta"]),
+        device=str(m["device"]),
+        dtype=str(m["dtype"]),
+    )
+    checkpoint = CheckpointConfig(ckpt_path=_as_path(c["ckpt_path"]))
+    inference = InferenceConfig(
+        text_list=list(i["text_list"]),
+        temperature=float(i["temperature"]),
+        p=float(i["p"]),
+        eos_token_id=int(i["eos_token_id"]),
+    )
+    benchmark = BenchParams(
+        warmup=int(b.get("warmup", 2)),
+        repeats=int(b.get("repeats", 5)),
+        steps=int(b.get("steps", model.context_length)),
+        synchronize=bool(b.get("synchronize", True)),
+    )
+
+    _validate_tokenizer(tokenizer)
+    _validate_model(model)
+    _validate_inference(inference)
+    _validate_bench_params(benchmark)
+    if not checkpoint.ckpt_path.exists():
+        raise FileNotFoundError(f"ckpt_path not found: {checkpoint.ckpt_path}")
+
+    logging = None
+    if lg:
+        logging = LoggingConfig(
+            backend=lg.get("backend"),
+            run_name=lg.get("run_name"),
+            architecture=lg.get("architecture"),
+            dataset=lg.get("dataset"),
+        )
+    return BenchInferConfig(
+        tokenizer=tokenizer,
+        model=model,
+        checkpoint=checkpoint,
+        inference=inference,
+        benchmark=benchmark,
+        logging=logging,
+    )
+
+
+def load_bench_tokenizer_config(path: Path | str) -> BenchTokenizerConfig:
+    cfg = _load_toml(_as_path(path))
+    _expect_keys(cfg, "root", ["tokenizer", "input", "benchmark"])
+    t = cfg["tokenizer"]
+    i = cfg["input"]
+    b = cfg["benchmark"]
+    lg = cfg.get("logging", {})
+
+    tokenizer = TokenizerConfig(
+        merges_path=_as_path(t["merges_path"]),
+        vocab_path=_as_path(t["vocab_path"]),
+        special_tokens=list(t.get("special_tokens", [])),
+    )
+    input_cfg = BenchTokenizerInput(text_list=list(i["text_list"]))
+    bench = BenchTokenizerParams(repeats=int(b.get("repeats", 5)))
+
+    _validate_tokenizer(tokenizer)
+    _validate_tokenizer_bench_input(input_cfg)
+    if bench.repeats <= 0:
+        raise ValueError("benchmark.repeats must be > 0")
+
+    logging = None
+    if lg:
+        logging = LoggingConfig(
+            backend=lg.get("backend"),
+            run_name=lg.get("run_name"),
+            architecture=lg.get("architecture"),
+            dataset=lg.get("dataset"),
+        )
+
+    return BenchTokenizerConfig(tokenizer=tokenizer, input=input_cfg, benchmark=bench, logging=logging)
