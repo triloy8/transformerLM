@@ -1,6 +1,6 @@
 [tokenizer]
-merges_path = "path/to/merges.txt"
-vocab_path = "path/to/vocab.json"
+merges_path = "./data/gpt2_merges.txt"
+vocab_path = "./data/gpt2_vocab.json"
 special_tokens = ["<|pad|>", "<|eos|>"]
 
 [model]
@@ -15,7 +15,7 @@ device = "cuda"       # or "spu"
 dtype = "float32"     # "float32" | "float16" | "bfloat16"
 
 [checkpoint]
-ckpt_path = "path/to/checkpoint.pt"
+ckpt_path = "./runs/2025-08-04_00-16-58_28jyumc2/4000.ckpt"
 
 [inference]
 text_list = [
@@ -27,8 +27,8 @@ p = 0.9
 eos_token_id = 1
 
 [benchmark]
-warmup = 10
-repeats = 20
+warmup = 5
+repeats = 10
 steps = 64
 synchronize = true
 

@@ -32,6 +32,8 @@ transformerlm-train = "transformerlm.cli.train:main"
 transformerlm-infer = "transformerlm.cli.infer:main"
 transformerlm-make-data = "transformerlm.cli.make_data:main"
 transformerlm-train-tokenizer = "transformerlm.cli.train_tokenizer:main"
+transformerlm-bench-infer = "benchmarking.bench_infer_latency:main"
+transformerlm-bench-tokenizer = "benchmarking.bench_tokenizer:main"
 
 [build-system]
 requires = ["setuptools>=69", "wheel"]
@@ -42,7 +44,7 @@ package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["transformerlm*"]
+include = ["transformerlm*", "benchmarking*"]
 exclude = [
   "tests*",
   "runs*",
