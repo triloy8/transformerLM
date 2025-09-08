@@ -116,7 +116,8 @@ class MultiheadSelfAttentionRoPE(nn.Module):
         with nvtx.range("attn/v_proj"):
             wvx = self.v_proj(x)
         if nvtx.enabled("fine"):
-            wvx_rearr = rearrange(wvx, "... seq_len (num_heads d_v) -> ... num_heads seq_len d_v", num_heads=self.num_heads, d_v=self.d_v)
+            with nvtx.range("attn/v_reshape"):
+                wvx_rearr = rearrange(wvx, "... seq_len (num_heads d_v) -> ... num_heads seq_len d_v", num_heads=self.num_heads, d_v=self.d_v)
         else:
             wvx_rearr = rearrange(wvx, "... seq_len (num_heads d_v) -> ... num_heads seq_len d_v", num_heads=self.num_heads, d_v=self.d_v)
 
