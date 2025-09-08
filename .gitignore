@@ -215,3 +215,9 @@ __marimo__/
 
 # Planning
 todo/*
+
+# nsys profiling
+*.qdstrm
+*.qdrep
+*.nsys-rep
+*.sqlite
