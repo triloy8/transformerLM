@@ -5,7 +5,7 @@ import torch
 import time
 from transformerlm.utils.dtypes import DTYPES
 from typing import Optional
-from transformerlm.logging.base import Logger
+from logger import Logger
 
 
 def infer_transformer(args, *, logger: Optional[Logger] = None, artifact_path: Optional[str] = None):

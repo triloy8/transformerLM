@@ -6,7 +6,7 @@ from typing import List
 from transformerlm.cli.utils import add_config_args, load_config_or_print
 from transformerlm.config import load_bench_tokenizer_config
 from transformerlm.tokenizer.tokenizer import Tokenizer
-from transformerlm.logging.console_logger import ConsoleLogger
+from logger import ConsoleLogger
 
 from .common import measure, mean
 
@@ -106,4 +106,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

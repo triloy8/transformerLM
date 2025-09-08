@@ -1,6 +1,6 @@
 [tokenizer]
-merges_path = "./data/gpt2_merges.txt"
-vocab_path = "./data/gpt2_vocab.json"
+merges_path = "../diffusionLM/data/gpt2_merges.txt"
+vocab_path = "../diffusionLM/data/gpt2_vocab.json"
 special_tokens = ["<|pad|>", "<|eos|>"]
 
 [model]

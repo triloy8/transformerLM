@@ -14,7 +14,7 @@ import numpy as np
 import os
 
 from transformerlm.utils.dtypes import DTYPES
-from transformerlm.logging.base import Logger
+from logger import Logger
 
 
 def train_transformer(args, *, logger: Logger, run_name: str):

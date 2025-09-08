@@ -4,7 +4,7 @@ from transformerlm.config import load_make_data_config
 from transformerlm.tokenizer.tokenizer import Tokenizer
 from transformerlm.data.dataset_builder import write_token_ids_to_memmap
 from transformerlm.cli.utils import add_config_args, load_config_or_print
-from transformerlm.logging.console_logger import ConsoleLogger
+from logger import ConsoleLogger
 
 
 def _parse_only_config():

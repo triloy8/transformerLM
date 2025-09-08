@@ -1,7 +1,7 @@
 import time
 import numpy as np
 from typing import Optional
-from transformerlm.logging.base import Logger
+from logger import Logger
 
 
 def count_total_tokens(tokenizer, input_filename, *, logger: Optional[Logger] = None):

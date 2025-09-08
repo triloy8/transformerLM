@@ -3,7 +3,7 @@ from pathlib import Path
 import torch
 import numpy as np
 from typing import Optional
-from transformerlm.logging.base import Logger
+from logger import Logger
 
 
 def train_loop(

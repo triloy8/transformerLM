@@ -11,7 +11,7 @@ from transformerlm.tokenizer.tokenizer import Tokenizer
 from transformerlm.models import TransformerLM
 from transformerlm.utils.dtypes import DTYPES
 from transformerlm.training.loss import cross_entropy
-from transformerlm.logging.console_logger import ConsoleLogger
+from logger import ConsoleLogger
 
 from .common import measure, mean, stddev
 

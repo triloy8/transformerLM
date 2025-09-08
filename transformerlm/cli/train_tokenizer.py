@@ -3,7 +3,7 @@ import argparse
 from transformerlm.config import load_train_tokenizer_config
 from transformerlm.tokenizer.bpe_trainer import train_bpe
 from transformerlm.cli.utils import add_config_args, load_config_or_print
-from transformerlm.logging.console_logger import ConsoleLogger
+from logger import ConsoleLogger
 
 
 def _parse_only_config():

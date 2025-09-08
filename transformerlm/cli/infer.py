@@ -3,7 +3,7 @@ import argparse
 from transformerlm.config import load_infer_config
 from transformerlm.inference.predictor import infer_transformer
 from transformerlm.cli.utils import add_config_args, load_config_or_print
-from transformerlm.logging.console_logger import ConsoleLogger
+from logger import ConsoleLogger
 
 
 def _parse_only_config():

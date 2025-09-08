@@ -5,8 +5,7 @@ from datetime import datetime
 from transformerlm.config import load_train_config
 from transformerlm.training.trainer import train_transformer
 from transformerlm.cli.utils import add_config_args, load_config_or_print
-from transformerlm.logging.console_logger import ConsoleLogger
-from transformerlm.logging.wandb_logger import WandbLogger
+from logger import ConsoleLogger, WandbLogger
 
 
 def _parse_only_config():
