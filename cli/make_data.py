@@ -3,7 +3,7 @@ import argparse
 from transformerlm.config import load_make_data_config
 from transformerlm.tokenizer.tokenizer import Tokenizer
 from transformerlm.data.dataset_builder import write_token_ids_to_memmap
-from transformerlm.cli.utils import add_config_args, load_config_or_print
+from cli.utils import add_config_args, load_config_or_print
 from logger import ConsoleLogger
 
 
@@ -37,3 +37,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from typing import List
 
-from transformerlm.cli.utils import add_config_args, load_config_or_print
+from cli.utils import add_config_args, load_config_or_print
 from transformerlm.config import load_bench_tokenizer_config
 from transformerlm.tokenizer.tokenizer import Tokenizer
 from logger import ConsoleLogger

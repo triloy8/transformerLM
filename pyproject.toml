@@ -28,10 +28,10 @@ ignore = [
 ]
 
 [project.scripts]
-transformerlm-train = "transformerlm.cli.train:main"
-transformerlm-infer = "transformerlm.cli.infer:main"
-transformerlm-make-data = "transformerlm.cli.make_data:main"
-transformerlm-train-tokenizer = "transformerlm.cli.train_tokenizer:main"
+transformerlm-train = "cli.train:main"
+transformerlm-infer = "cli.infer:main"
+transformerlm-make-data = "cli.make_data:main"
+transformerlm-train-tokenizer = "cli.train_tokenizer:main"
 transformerlm-bench-infer = "benchmarking.bench_infer_latency:main"
 transformerlm-bench-tokenizer = "benchmarking.bench_tokenizer:main"
 
@@ -44,7 +44,7 @@ package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["transformerlm*", "benchmarking*", "logger*"]
+include = ["transformerlm*", "benchmarking*", "logger*", "cli*"]
 exclude = [
   "tests*",
   "runs*",

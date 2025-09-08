@@ -4,7 +4,7 @@ from datetime import datetime
 
 from transformerlm.config import load_train_config
 from transformerlm.training.trainer import train_transformer
-from transformerlm.cli.utils import add_config_args, load_config_or_print
+from cli.utils import add_config_args, load_config_or_print
 from logger import ConsoleLogger, WandbLogger
 
 
@@ -117,3 +117,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
