@@ -44,7 +44,7 @@ package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["transformerlm*", "benchmarking*", "logger*", "cli*", "config*"]
+include = ["transformerlm*", "benchmarking*", "logger*", "cli*", "config*", "profiling*"]
 
 [tool.setuptools.package-data]
 "config" = [
