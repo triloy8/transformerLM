@@ -3,7 +3,7 @@ from pathlib import Path
 import textwrap
 import pytest
 
-from transformerlm.config import (
+from config import (
     load_train_config,
     load_infer_config,
     load_make_data_config,

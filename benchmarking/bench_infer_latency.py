@@ -6,7 +6,7 @@ from typing import List
 import torch
 
 from cli.utils import add_config_args, load_config_or_print
-from transformerlm.config import load_bench_infer_config
+from config import load_bench_infer_config
 from transformerlm.tokenizer.tokenizer import Tokenizer
 from transformerlm.models import TransformerLM
 from transformerlm.utils.dtypes import DTYPES

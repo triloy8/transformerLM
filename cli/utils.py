@@ -3,7 +3,7 @@ import json
 import sys
 from typing import Callable, Optional, Type
 
-from transformerlm.config import asdict_pretty
+from config import asdict_pretty
 
 
 def add_config_args(parser: argparse.ArgumentParser, *, type_: Type = str) -> None:
@@ -22,4 +22,3 @@ def load_config_or_print(load_fn: Callable[[str], object], config_path: str, pri
 def die(msg: str, code: int = 2) -> None:
     print(msg, file=sys.stderr)
     sys.exit(code)
-

@@ -1,6 +1,6 @@
 import argparse
 
-from transformerlm.config import load_infer_config
+from config import load_infer_config
 from transformerlm.inference.predictor import infer_transformer
 from cli.utils import add_config_args, load_config_or_print
 from logger import ConsoleLogger
@@ -48,4 +48,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
