@@ -74,7 +74,7 @@ Requires Python 3.11–3.12 and PyTorch. Using [`uv`](https://github.com/astral-
 
 ```bash
 # Print an example resolved config
-uv run transformerlm-train --config configs/train.toml --print-config
+uv run transformerlm-train --config config/resources/train.toml --print-config
 ```
 
 - Or install the package locally (editable):
@@ -88,45 +88,45 @@ uv pip install -e .
 - Train the tokenizer (BPE):
 
 ```bash
-uv run transformerlm-train-tokenizer --config configs/train_tokenizer.toml
+uv run transformerlm-train-tokenizer --config config/resources/train_tokenizer.toml
 ```
 
 - Start model training:
 
 ```bash
-uv run transformerlm-train --config configs/train.toml
+uv run transformerlm-train --config config/resources/train.toml
 ```
 
 - Generate text:
 
 ```bash
-uv run transformerlm-infer --config configs/infer.toml
+uv run transformerlm-infer --config config/resources/infer.toml
 ```
 
 - Build memmap datasets from raw text:
 
 ```bash
-uv run transformerlm-make-data --config configs/make_data.toml
+uv run transformerlm-make-data --config config/resources/make_data.toml
 ```
 
 - Inspect effective configuration without running:
 
 ```bash
-uv run transformerlm-train --config configs/train.toml --print-config
+uv run transformerlm-train --config config/resources/train.toml --print-config
 ```
 
 ## Benchmarking
 
 - Benchmarks live under `benchmarking/` and are TOML‑driven, similar to the CLI tools.
-- Use the sample configs in `configs/` and run the scripts directly.
+- Use the sample configs in `config/resources/` and run the scripts directly.
 - Results are logged with the `ConsoleLogger` to stdout; no files are written.
 
 - Inference latency:
-  - Run: `python -m benchmarking.bench_infer_latency --config configs/bench_infer.toml`
+  - Run: `python -m benchmarking.bench_infer_latency --config config/resources/bench_infer.toml`
   - Measures warmup and repeated decode steps (tokens/sec, latency).
 
 - Tokenizer throughput:
-  - Run: `python -m benchmarking.bench_tokenizer --config configs/bench_tokenizer.toml`
+  - Run: `python -m benchmarking.bench_tokenizer --config config/resources/bench_tokenizer.toml`
   - Measures encode and decode throughput over given texts.
 
 ## Tests
@@ -145,7 +145,7 @@ uv run transformerlm-train --config configs/train.toml --print-config
 - Backends:
   - `console` (default): prints structured JSON lines with metrics like `metrics.loss`, `metrics.lr`, `metrics.grad_l2_norm`, plus optional activation/weight norms.
   - `wandb`: logs to Weights & Biases and uploads artifacts (checkpoints, tokenizer files, optional inference outputs).
-- Configure in `configs/train.toml` under `[logging]`:
+- Configure in `config/resources/train.toml` under `[logging]`:
 
 ```toml
 [logging]
@@ -163,7 +163,7 @@ project = "your-project"
 - Inference logs include sampling params and truncated text:
   - Keys: `params.temperature`, `params.p`, `params.eos_token_id`, `text.prompt`, `text.output`, `metrics.latency_ms`.
 - Tip (console backend): Pipe to `jq` for readability:
-  - `uv run transformerlm-train --config configs/train.toml | jq -r "."`
+  - `uv run transformerlm-train --config config/resources/train.toml | jq -r "."`
 
 ## Considerations
 
