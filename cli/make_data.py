@@ -2,7 +2,7 @@ import argparse
 
 from config import load_make_data_config
 from transformerlm.tokenizer.tokenizer import Tokenizer
-from transformerlm.data.dataset_builder import write_token_ids_to_memmap
+from databuilder.dataset_builder import write_token_ids_to_memmap
 from cli.utils import add_config_args, load_config_or_print
 from logger import ConsoleLogger
 

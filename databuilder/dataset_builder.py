@@ -72,3 +72,4 @@ def write_token_ids_to_memmap(tokenizer, input_filename, total_tokens, output_fi
                 "params.shape": f"({total_tokens},)",
             }
         )
+
