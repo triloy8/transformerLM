@@ -1,70 +1,20 @@
 # Transformer Language Model from Scratch
 
-## Motivation
+## What Is This?
 
-The goal is just to explore making a basic Transformer Language model from scratch.
+A minimal, from‑scratch Transformer language model implementation with a small, practical toolset (tokenizer, dataset builder, CLI, benchmarks, logging). The focus is on clarity and readability rather than feature breadth or scale.
 
-## Features
+## Overview
 
-### Model Components
-
-- **Transformer Language Model**: Custom PyTorch module with from-scratch implementations:
-  - Linear Layers
-  - Embedding Layers
-  - RMSNorm
-  - SwiGLU Activation
-  - Rotary Position Embedding (RoPE)
-  - Scale Dot Product Attention (SDPA)
-  - Multi-Headed Attention (MHA)
-  - Softmax Function
-  - Decoder-Only Transformer Blocks
-
-### Training Utilities
-
-- Custom implementation of optimization and regularization methods:
-  - AdamW optimizer
-  - Cosine annealing learning rate scheduler
-  - Cross-entropy loss function
-  - Gradient clipping
-  - Model checkpoint saving/loading utilities
-  - Lightweight logging with selectable backends (console or Weights & Biases)
-
-- Config-driven CLI entry points (see Usage):
-  - `transformerlm-train` for training via a TOML config
-  - `transformerlm-make-data` for building memmap datasets
-  - `transformerlm-train-tokenizer` for BPE training
-  - `transformerlm-infer` for text generation
-
-### Tokenizer
-
-- Train a Byte-Pair Encoding (BPE) tokenizer:
-  - GPT-2 style byte-level pretokenization
-  - Chunked corpus scanning with parallel pretoken frequency counting
-  - Generates `vocab.json` and `merges.txt` with support for special tokens
-  - Merge search is simple/naive and open to further optimization
-
-### Data Preparation
-
-- CLI to preprocess raw text data into memory-mapped numpy arrays (`.memmap`), ensuring efficient data loading during training
-
-### Inference
-
-- Sampling-based text generation with adjustable parameters:
-  - Temperature sampling
-  - Top-p (nucleus) sampling
-  - Optional EOS handling and context windowing
-
-### Training Script
-
-- Comprehensive training loop:
-  - Logs loss, learning rate, grad L2 norm
-  - Optionally logs activation and weight norms
-  - Checkpointing at a configurable iteration frequency
-  - Select logging backend via config (console by default; optional Wandb)
-
-### Wandb Sweep
-
-- A starter Wandb sweep YAML is included and can be adapted to the CLI/config workflow
+- From‑scratch model: decoder‑only Transformer LM (RMSNorm, SwiGLU, RoPE, SDPA/MHA), implemented directly with PyTorch modules.
+- From‑scratch training: AdamW optimizer, cosine LR schedule, gradient clipping, checkpointing.
+- From‑scratch tokenizer: byte‑level BPE training and IO, producing `vocab.json` and `merges.txt`.
+- From‑scratch inference: temperature and top‑p sampling with optional EOS handling.
+- Databuilder: memmap pipeline for large corpora (token counting and ID writing).
+- CLI + TOML configs: consistent, simple entry points.
+- Logging: console JSON or Weights & Biases.
+- Benchmarking: tokenizer and inference throughput checks.
+- Profiling: small helpers for memory and runtime inspection.
 
 ## Installation
 
@@ -84,6 +34,8 @@ uv pip install -e .
 ```
 
 ## Usage Examples
+
+Entry points live in `cli/` and are driven by TOML configs in `config/resources/`.
 
 - Train the tokenizer (BPE):
 
@@ -115,6 +67,58 @@ uv run transformerlm-make-data --config config/resources/make_data.toml
 uv run transformerlm-train --config config/resources/train.toml --print-config
 ```
 
+## Modules
+
+- transformerlm.models
+  - Purpose: Core Transformer components and the decoder‑only LM.
+  - Key files: `transformerlm/models/transformer.py`, `transformerlm/models/attention.py`, `transformerlm/models/layers.py`.
+  - Notes: dtype helpers under `transformerlm/utils/dtypes.py`.
+
+- transformerlm.training
+  - Purpose: Training loop, loss, optimizer, schedule, checkpointing, and batching over memmap data.
+  - Key files: `transformerlm/training/trainer.py`, `transformerlm/training/loop.py`, `transformerlm/training/optim.py`, `transformerlm/training/schedule.py`, `transformerlm/training/checkpoint.py`, `transformerlm/training/data.py`.
+
+- transformerlm.inference
+  - Purpose: Sampling utilities and simple generation helpers.
+  - Key files: `transformerlm/inference/generate.py`, `transformerlm/inference/sampling.py`, `transformerlm/inference/predictor.py`.
+
+- transformerlm.tokenizer
+  - Purpose: From‑scratch byte‑level BPE trainer and tokenizer IO.
+  - Key files: `transformerlm/tokenizer/bpe_trainer.py`, `transformerlm/tokenizer/tokenizer.py`, `transformerlm/tokenizer/pretokenize.py`, `transformerlm/tokenizer/io.py`.
+  - Artifacts: `vocab.json`, `merges.txt` (with optional special tokens).
+
+- databuilder
+  - Purpose: Dataset building helpers for large corpora (memmap writer, token counting).
+  - Key files: `databuilder/dataset_builder.py`.
+  - Usage: driven via `transformerlm-make-data` and `config/resources/make_data.toml`.
+
+- cli
+  - Purpose: Command‑line entry points wrapping configs and orchestration.
+  - Key files: `cli/train.py`, `cli/infer.py`, `cli/make_data.py`, `cli/train_tokenizer.py`, `cli/utils.py`.
+  - Scripts: exposed in `pyproject.toml` under `[project.scripts]`.
+
+- logger
+  - Purpose: Pluggable logging backends (console JSON and Weights & Biases).
+  - Key files: `logger/base.py`, `logger/console_logger.py`, `logger/wandb_logger.py`, `logger/noop.py`.
+
+- benchmarking
+  - Purpose: Quick throughput checks for inference and tokenizer.
+  - Key files: `benchmarking/bench_infer_latency.py`, `benchmarking/bench_tokenizer.py`.
+  - Configs: `config/resources/bench_infer.toml`, `config/resources/bench_tokenizer.toml`.
+
+- config
+  - Purpose: Typed config schemas, loaders, validation, and example TOMLs.
+  - Key files: `config/train.py`, `config/infer.py`, `config/bench_infer.py`, `config/bench_tokenizer.py`, `config/io.py`, `config/schemas.py`.
+  - Examples: `config/resources/*.toml`.
+
+- profiling
+  - Purpose: Lightweight helpers for memory/runtime profiling, including NVTX ranges.
+  - Key files: `profiling/memory.py`, `profiling/nvtx.py`.
+
+- utils
+  - Purpose: Small shared helpers.
+  - Key files: `transformerlm/utils/dtypes.py`.
+
 ## Benchmarking
 
 - Benchmarks live under `benchmarking/` and are TOML‑driven, similar to the CLI tools.
@@ -133,7 +137,7 @@ uv run transformerlm-train --config config/resources/train.toml --print-config
 
 - Run tests: `uv run pytest`
 - Markers:
-  - `slow`: long-running tests. Deselect with `-m "not slow"`.
+  - `slow`: long‑running tests. Deselect with `-m "not slow"`.
   - `gpu`: requires CUDA/GPU. Deselect with `-m "not gpu"`.
 - Examples:
   - Quick CPU suite: `uv run pytest -m "not slow and not gpu"`
@@ -165,6 +169,37 @@ project = "your-project"
 - Tip (console backend): Pipe to `jq` for readability:
   - `uv run transformerlm-train --config config/resources/train.toml | jq -r "."`
 
-## Considerations
+## Profiling
 
-- Tokenizer training uses a simple/naive merge search; the pretokenization and frequency counting are chunked/parallelized, but the merge step itself can be further optimized.
+- Tools:
+  - NVTX ranges for GPU timeline annotation (via `profiling/nvtx.py`).
+  - CUDA memory helpers for summaries and allocator history (via `profiling/memory.py`).
+
+- NVTX usage:
+  - Enable globally with env vars:
+    - `TRANSFORMERLM_NVTX=1` to turn on annotations
+    - `TRANSFORMERLM_NVTX_LEVEL=coarse|fine|verbose` to control detail
+  - Example (collect with Nsight Systems):
+
+```bash
+TRANSFORMERLM_NVTX=1 TRANSFORMERLM_NVTX_LEVEL=fine \
+  nsys profile -o result \
+  uv run transformerlm-train --config config/resources/train.toml
+```
+
+- Memory helpers (Python):
+
+```python
+from profiling import memory
+
+# Optionally record allocator history (CUDA only)
+memory.start_history(True)
+
+# ... run training or inference ...
+
+# Snapshot/summary (safe no-ops on CPU)
+ok = memory.dump_snapshot("alloc_history.json")
+print(memory.summary())
+print(memory.peaks())
+memory.reset_peaks()
+```
