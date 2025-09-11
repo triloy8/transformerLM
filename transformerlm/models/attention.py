@@ -28,8 +28,8 @@ class RotaryPositionalEmbedding(torch.nn.Module):
                 x1 = x[..., 0]
                 x2 = x[..., 1]
 
-                phases_cos = self.phases[..., 0][token_positions]
-                phases_sin = self.phases[..., 1][token_positions]
+                phases_cos = self.phases[..., 0][token_positions].to(dtype=x.dtype)
+                phases_sin = self.phases[..., 1][token_positions].to(dtype=x.dtype)
 
                 x_rotated = torch.stack([
                     x1 * phases_cos - x2 * phases_sin,
@@ -42,8 +42,8 @@ class RotaryPositionalEmbedding(torch.nn.Module):
             x1 = x[..., 0]
             x2 = x[..., 1]
 
-            phases_cos = self.phases[..., 0][token_positions]
-            phases_sin = self.phases[..., 1][token_positions]
+            phases_cos = self.phases[..., 0][token_positions].to(dtype=x.dtype)
+            phases_sin = self.phases[..., 1][token_positions].to(dtype=x.dtype)
 
             x_rotated = torch.stack([
                 x1 * phases_cos - x2 * phases_sin,
