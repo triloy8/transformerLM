@@ -151,6 +151,7 @@ class BenchParams:
     steps: int
     synchronize: bool = True
     backward: bool = False
+    optimizer_step: bool = False
 
 
 @dataclass
@@ -161,6 +162,16 @@ class BenchInferConfig:
     inference: InferenceConfig
     benchmark: BenchParams
     logging: Optional[LoggingConfig] = None
+    optimizer: Optional["OptimizerBenchConfig"] = None
+
+
+@dataclass
+class OptimizerBenchConfig:
+    lr: float
+    betas: Tuple[float, float]
+    eps: float
+    weight_decay: float
+    grad_clip_max_l2_norm: float = 0.0
 
 
 @dataclass
@@ -179,4 +190,3 @@ class BenchTokenizerConfig:
     input: BenchTokenizerInput
     benchmark: BenchTokenizerParams
     logging: Optional[LoggingConfig] = None
-

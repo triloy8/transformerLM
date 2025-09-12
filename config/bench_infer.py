@@ -11,6 +11,7 @@ from .schemas import (
     BenchParams,
     BenchInferConfig,
     LoggingConfig,
+    OptimizerBenchConfig,
 )
 from .io import _as_path, _expect_keys, _load_toml
 from .validate import (
@@ -31,6 +32,7 @@ def load_bench_infer_config(path: Path | str) -> BenchInferConfig:
     i: Dict[str, Any] = cfg["inference"]
     b: Dict[str, Any] = cfg["benchmark"]
     lg: Dict[str, Any] = cfg.get("logging", {})
+    opt_tbl: Dict[str, Any] = cfg.get("optimizer", {})
 
     tokenizer = TokenizerConfig(
         merges_path=_as_path(tok["merges_path"]),
@@ -61,6 +63,7 @@ def load_bench_infer_config(path: Path | str) -> BenchInferConfig:
         steps=int(b.get("steps", model.context_length)),
         synchronize=bool(b.get("synchronize", True)),
         backward=bool(b.get("backward", False)),
+        optimizer_step=bool(b.get("optimizer_step", False)),
     )
 
     _validate_tokenizer(tokenizer)
@@ -78,6 +81,32 @@ def load_bench_infer_config(path: Path | str) -> BenchInferConfig:
             architecture=lg.get("architecture"),
             dataset=lg.get("dataset"),
         )
+
+    # Optimizer config (only needed if optimizer_step enabled; still safe to construct with defaults)
+    optimizer: Optional[OptimizerBenchConfig] = None
+    # Defaults emphasize stability (no weight updates) but include step overhead
+    default_lr = 0.0
+    default_betas = (0.9, 0.999)
+    default_eps = 1e-8
+    default_wd = 0.0
+    default_clip = 0.0
+    if benchmark.optimizer_step or opt_tbl:
+        lr = float(opt_tbl.get("lr", default_lr))
+        betas = opt_tbl.get("betas", list(default_betas))
+        if isinstance(betas, tuple):
+            betas_tuple = (float(betas[0]), float(betas[1]))
+        else:
+            betas_tuple = (float(betas[0]), float(betas[1]))
+        eps = float(opt_tbl.get("eps", default_eps))
+        wd = float(opt_tbl.get("weight_decay", default_wd))
+        clip = float(opt_tbl.get("grad_clip_max_l2_norm", default_clip))
+        optimizer = OptimizerBenchConfig(
+            lr=lr,
+            betas=betas_tuple,
+            eps=eps,
+            weight_decay=wd,
+            grad_clip_max_l2_norm=clip,
+        )
     return BenchInferConfig(
         tokenizer=tokenizer,
         model=model,
@@ -85,5 +114,5 @@ def load_bench_infer_config(path: Path | str) -> BenchInferConfig:
         inference=inference,
         benchmark=benchmark,
         logging=logging,
+        optimizer=optimizer,
     )
-

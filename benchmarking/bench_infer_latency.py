@@ -11,6 +11,8 @@ from transformerlm.tokenizer.tokenizer import Tokenizer
 from transformerlm.models import TransformerLM
 from transformerlm.utils.dtypes import DTYPES
 from transformerlm.training.loss import cross_entropy
+from transformerlm.training.optim import AdamW
+from transformerlm.training.grad import gradient_clipping
 from logger import ConsoleLogger
 
 from .common import measure, mean, stddev
@@ -84,6 +86,36 @@ def main():
         "steps": cfg.benchmark.steps,
         "synchronize": cfg.benchmark.synchronize,
     }
+    # Optimizer (optional)
+    optimizer = None
+    if cfg.benchmark.optimizer_step:
+        # If no optimizer config provided, use safe defaults per loader (lr=0.0, etc.)
+        opt_cfg = cfg.optimizer
+        if opt_cfg is None:
+            raise ValueError("optimizer_step enabled but no optimizer config provided")
+        optimizer = AdamW(
+            model.parameters(),
+            lr=opt_cfg.lr,
+            betas=opt_cfg.betas,
+            eps=opt_cfg.eps,
+            weight_decay=opt_cfg.weight_decay,
+        )
+
+    # Annotate run with optimizer config if present
+    if cfg.benchmark.optimizer_step and cfg.optimizer is not None:
+        run_config.update(
+            {
+                "optimizer_step": True,
+                "optimizer.lr": float(cfg.optimizer.lr),
+                "optimizer.weight_decay": float(cfg.optimizer.weight_decay),
+                "optimizer.betas": tuple(cfg.optimizer.betas),
+                "optimizer.eps": float(cfg.optimizer.eps),
+                "optimizer.grad_clip_max_l2_norm": float(cfg.optimizer.grad_clip_max_l2_norm),
+            }
+        )
+    else:
+        run_config.update({"optimizer_step": False})
+
     info = logger.start_run(run_config)
 
     # Warmup: run the same loop shape as the timed section
@@ -102,12 +134,23 @@ def main():
                 logits = model(inputs)
                 loss = cross_entropy(logits, targets).mean()
                 loss.backward()
+                if cfg.benchmark.optimizer_step and optimizer is not None:
+                    # Optional gradient clipping
+                    if cfg.optimizer is not None and cfg.optimizer.grad_clip_max_l2_norm > 0.0:
+                        gradient_clipping(model.parameters(), cfg.optimizer.grad_clip_max_l2_norm)
+                    optimizer.step()
 
     # Timed repeats
     latencies_ms: List[float] = []
     tokens_per_sec: List[float] = []
 
     for r in range(cfg.benchmark.repeats):
+        # Optional model/optimizer reset outside timed block (not enabled by default)
+        if getattr(cfg.benchmark, "reset_weights_each_repeat", False):
+            # Not configured in schemas by default; kept for forward-compat via getattr.
+            # Users enabling this in their config should ensure it's supported.
+            raise NotImplementedError("reset_weights_each_repeat is not implemented in schema")
+
         def _run():
             # Standardized micro-bench: repeat forward (and optional backward) on fixed inputs
             if not cfg.benchmark.backward:
@@ -125,6 +168,10 @@ def main():
                     last_logits = model(inputs)
                     loss = cross_entropy(last_logits, targets).mean()
                     loss.backward()
+                    if cfg.benchmark.optimizer_step and optimizer is not None:
+                        if cfg.optimizer is not None and cfg.optimizer.grad_clip_max_l2_norm > 0.0:
+                            gradient_clipping(model.parameters(), cfg.optimizer.grad_clip_max_l2_norm)
+                        optimizer.step()
                 return last_logits
 
         _, dt = measure(cfg.model.device, _run, synchronize=cfg.benchmark.synchronize)
