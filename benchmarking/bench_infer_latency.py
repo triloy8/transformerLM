@@ -14,6 +14,7 @@ from transformerlm.training.loss import cross_entropy
 from transformerlm.training.optim import AdamW
 from transformerlm.training.grad import gradient_clipping
 from logger import ConsoleLogger
+from profiling import nvtx
 
 from .common import measure, mean, stddev
 
@@ -33,29 +34,33 @@ def main():
     logger = ConsoleLogger()
 
     # Prepare tokenizer and inputs
-    tokenizer = Tokenizer.from_files(
-        vocab_filepath=str(cfg.tokenizer.vocab_path),
-        merges_filepath=str(cfg.tokenizer.merges_path),
-        special_tokens=cfg.tokenizer.special_tokens,
-    )
-    ids: List[List[int]] = [tokenizer.encode(text) for text in cfg.inference.text_list]
+    with nvtx.range("bench/setup/tokenizer"):
+        tokenizer = Tokenizer.from_files(
+            vocab_filepath=str(cfg.tokenizer.vocab_path),
+            merges_filepath=str(cfg.tokenizer.merges_path),
+            special_tokens=cfg.tokenizer.special_tokens,
+        )
+        ids: List[List[int]] = [tokenizer.encode(text) for text in cfg.inference.text_list]
     prompt_lens = [len(x) for x in ids]
     batch_size = len(ids)
 
     # Model
-    model = TransformerLM(
-        vocab_size=cfg.model.vocab_size,
-        context_length=cfg.model.context_length,
-        d_model=cfg.model.d_model,
-        num_layers=cfg.model.num_layers,
-        num_heads=cfg.model.num_heads,
-        d_ff=cfg.model.d_ff,
-        rope_theta=cfg.model.rope_theta,
-        device=cfg.model.device,
-        dtype=DTYPES[cfg.model.dtype],
-    )
-    ckpt = torch.load(str(cfg.checkpoint.ckpt_path), map_location=cfg.model.device)
-    model.load_state_dict(ckpt["model_state_dict"])  # type: ignore[index]
+    with nvtx.range("bench/setup/model_load"):
+        model = TransformerLM(
+            vocab_size=cfg.model.vocab_size,
+            context_length=cfg.model.context_length,
+            d_model=cfg.model.d_model,
+            num_layers=cfg.model.num_layers,
+            num_heads=cfg.model.num_heads,
+            d_ff=cfg.model.d_ff,
+            rope_theta=cfg.model.rope_theta,
+            device=cfg.model.device,
+            dtype=DTYPES[cfg.model.dtype],
+        )
+        ckpt = torch.load(str(cfg.checkpoint.ckpt_path), map_location=cfg.model.device)
+        model.load_state_dict(ckpt["model_state_dict"])  # type: ignore[index]
+        # Snapshot initial model state on CPU for per-repeat resets
+        initial_model_state = {k: v.detach().cpu() for k, v in model.state_dict().items()}
     # Snapshot initial model state on CPU for per-repeat resets
     initial_model_state = {k: v.detach().cpu() for k, v in model.state_dict().items()}
 
@@ -95,13 +100,14 @@ def main():
         opt_cfg = cfg.optimizer
         if opt_cfg is None:
             raise ValueError("optimizer_step enabled but no optimizer config provided")
-        optimizer = AdamW(
-            model.parameters(),
-            lr=opt_cfg.lr,
-            betas=opt_cfg.betas,
-            eps=opt_cfg.eps,
-            weight_decay=opt_cfg.weight_decay,
-        )
+        with nvtx.range("bench/setup/optimizer"):
+            optimizer = AdamW(
+                model.parameters(),
+                lr=opt_cfg.lr,
+                betas=opt_cfg.betas,
+                eps=opt_cfg.eps,
+                weight_decay=opt_cfg.weight_decay,
+            )
 
     # Annotate run with optimizer config if present
     if cfg.benchmark.optimizer_step and cfg.optimizer is not None:
@@ -118,29 +124,52 @@ def main():
     else:
         run_config.update({"optimizer_step": False})
 
-    info = logger.start_run(run_config)
+    with nvtx.range("bench/setup/run_config"):
+        info = logger.start_run(run_config)
 
     # Warmup: run the same loop shape as the timed section
     inputs = in_indices[:, :-1]
     targets = in_indices[:, 1:]
-    for _ in range(cfg.benchmark.warmup):
-        if not cfg.benchmark.backward:
-            model.eval()
-            with torch.no_grad():
+    clip_enabled = bool(cfg.optimizer is not None and cfg.optimizer.grad_clip_max_l2_norm > 0.0)
+    with nvtx.range("bench/warmup"):
+        for _ in range(cfg.benchmark.warmup):
+            if not cfg.benchmark.backward:
+                model.eval()
+                with torch.no_grad():
+                    for _ in range(cfg.benchmark.steps):
+                        if nvtx.enabled("fine"):
+                            with nvtx.range("bench/warmup/iter/forward"):
+                                _ = model(inputs)
+                        else:
+                            _ = model(inputs)
+            else:
+                model.train()
                 for _ in range(cfg.benchmark.steps):
-                    _ = model(inputs)
-        else:
-            model.train()
-            for _ in range(cfg.benchmark.steps):
-                model.zero_grad(set_to_none=True)
-                logits = model(inputs)
-                loss = cross_entropy(logits, targets).mean()
-                loss.backward()
-                if cfg.benchmark.optimizer_step and optimizer is not None:
-                    # Optional gradient clipping
-                    if cfg.optimizer is not None and cfg.optimizer.grad_clip_max_l2_norm > 0.0:
-                        gradient_clipping(model.parameters(), cfg.optimizer.grad_clip_max_l2_norm)
-                    optimizer.step()
+                    model.zero_grad(set_to_none=True)
+                    if nvtx.enabled("fine"):
+                        with nvtx.range("bench/warmup/iter/forward"):
+                            logits = model(inputs)
+                        with nvtx.range("bench/warmup/iter/loss"):
+                            loss = cross_entropy(logits, targets).mean()
+                        with nvtx.range("bench/warmup/iter/backward"):
+                            loss.backward()
+                    else:
+                        logits = model(inputs)
+                        loss = cross_entropy(logits, targets).mean()
+                        loss.backward()
+                    if cfg.benchmark.optimizer_step and optimizer is not None:
+                        # Optional gradient clipping
+                        if clip_enabled:
+                            if nvtx.enabled("fine"):
+                                with nvtx.range("bench/warmup/iter/clip"):
+                                    gradient_clipping(model.parameters(), cfg.optimizer.grad_clip_max_l2_norm)  # type: ignore[arg-type]
+                            else:
+                                gradient_clipping(model.parameters(), cfg.optimizer.grad_clip_max_l2_norm)  # type: ignore[arg-type]
+                        if nvtx.enabled("fine"):
+                            with nvtx.range("bench/warmup/iter/opt_step"):
+                                optimizer.step()
+                        else:
+                            optimizer.step()
 
     # Timed repeats
     latencies_ms: List[float] = []
@@ -148,16 +177,17 @@ def main():
 
     for r in range(cfg.benchmark.repeats):
         # Always reset model (and optimizer state) before each timed repeat
-        model.load_state_dict(initial_model_state, strict=True)
-        model.zero_grad(set_to_none=True)
-        if cfg.benchmark.optimizer_step and cfg.optimizer is not None:
-            optimizer = AdamW(
-                model.parameters(),
-                lr=cfg.optimizer.lr,
-                betas=cfg.optimizer.betas,
-                eps=cfg.optimizer.eps,
-                weight_decay=cfg.optimizer.weight_decay,
-            )
+        with nvtx.range(f"bench/repeat[{r}]/reset"):
+            model.load_state_dict(initial_model_state, strict=True)
+            model.zero_grad(set_to_none=True)
+            if cfg.benchmark.optimizer_step and cfg.optimizer is not None:
+                optimizer = AdamW(
+                    model.parameters(),
+                    lr=cfg.optimizer.lr,
+                    betas=cfg.optimizer.betas,
+                    eps=cfg.optimizer.eps,
+                    weight_decay=cfg.optimizer.weight_decay,
+                )
 
         def _run():
             # Standardized micro-bench: repeat forward (and optional backward) on fixed inputs
@@ -166,23 +196,46 @@ def main():
                 with torch.no_grad():
                     last_logits = None
                     for _ in range(cfg.benchmark.steps):
-                        last_logits = model(inputs)
+                        if nvtx.enabled("fine"):
+                            with nvtx.range("bench/timed/iter/forward"):
+                                last_logits = model(inputs)
+                        else:
+                            last_logits = model(inputs)
                     return last_logits
             else:
                 model.train()
                 last_logits = None
                 for _ in range(cfg.benchmark.steps):
                     model.zero_grad(set_to_none=True)
-                    last_logits = model(inputs)
-                    loss = cross_entropy(last_logits, targets).mean()
-                    loss.backward()
+                    if nvtx.enabled("fine"):
+                        with nvtx.range("bench/timed/iter/forward"):
+                            last_logits = model(inputs)
+                        with nvtx.range("bench/timed/iter/loss"):
+                            loss = cross_entropy(last_logits, targets).mean()
+                        with nvtx.range("bench/timed/iter/backward"):
+                            loss.backward()
+                    else:
+                        last_logits = model(inputs)
+                        loss = cross_entropy(last_logits, targets).mean()
+                        loss.backward()
                     if cfg.benchmark.optimizer_step and optimizer is not None:
-                        if cfg.optimizer is not None and cfg.optimizer.grad_clip_max_l2_norm > 0.0:
-                            gradient_clipping(model.parameters(), cfg.optimizer.grad_clip_max_l2_norm)
-                        optimizer.step()
+                        if clip_enabled:
+                            if nvtx.enabled("fine"):
+                                with nvtx.range("bench/timed/iter/clip"):
+                                    gradient_clipping(model.parameters(), cfg.optimizer.grad_clip_max_l2_norm)  # type: ignore[arg-type]
+                            else:
+                                gradient_clipping(model.parameters(), cfg.optimizer.grad_clip_max_l2_norm)  # type: ignore[arg-type]
+                        if nvtx.enabled("fine"):
+                            with nvtx.range("bench/timed/iter/opt_step"):
+                                optimizer.step()
+                        else:
+                            optimizer.step()
                 return last_logits
 
-        _, dt = measure(cfg.model.device, _run, synchronize=cfg.benchmark.synchronize)
+        nvtx.mark("bench/measure_start")
+        with nvtx.range(f"bench/repeat[{r}]/timed"):
+            _, dt = measure(cfg.model.device, _run, synchronize=cfg.benchmark.synchronize)
+        nvtx.mark("bench/measure_end")
         # Processed tokens: per iteration, each sequence processes (T_in - 1) positions
         T_in = int(in_indices.shape[1])
         processed_tokens = max(T_in - 1, 0) * batch_size * int(cfg.benchmark.steps)
@@ -192,30 +245,32 @@ def main():
         latencies_ms.append(lat_ms)
         tokens_per_sec.append(tps)
 
+        with nvtx.range(f"bench/repeat[{r}]/log"):
+            logger.log(
+                {
+                    "phase": "bench_infer",
+                    "metrics.latency_ms": lat_ms,
+                    "metrics.tokens_sec": tps,
+                    "metrics.processed_tokens": int(processed_tokens),
+                    "metrics.batch_size": int(batch_size),
+                    "metrics.backward": bool(cfg.benchmark.backward),
+                },
+                step=r,
+            )
+
+    # Summary
+    with nvtx.range("bench/summary"):
         logger.log(
             {
                 "phase": "bench_infer",
-                "metrics.latency_ms": lat_ms,
-                "metrics.tokens_sec": tps,
-                "metrics.processed_tokens": int(processed_tokens),
-                "metrics.batch_size": int(batch_size),
-                "metrics.backward": bool(cfg.benchmark.backward),
-            },
-            step=r,
+                "event": "summary",
+                "metrics.latency_ms.mean": mean(latencies_ms),
+                "metrics.tokens_sec.mean": mean(tokens_per_sec),
+                "metrics.latency_ms.stddev": stddev(latencies_ms),
+                "metrics.tokens_sec.stddev": stddev(tokens_per_sec),
+                "metrics.iters": int(cfg.benchmark.repeats),
+            }
         )
-
-    # Summary
-    logger.log(
-        {
-            "phase": "bench_infer",
-            "event": "summary",
-            "metrics.latency_ms.mean": mean(latencies_ms),
-            "metrics.tokens_sec.mean": mean(tokens_per_sec),
-            "metrics.latency_ms.stddev": stddev(latencies_ms),
-            "metrics.tokens_sec.stddev": stddev(tokens_per_sec),
-            "metrics.iters": int(cfg.benchmark.repeats),
-        }
-    )
 
     logger.finish()
 
