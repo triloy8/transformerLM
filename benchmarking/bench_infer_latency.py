@@ -56,6 +56,8 @@ def main():
     )
     ckpt = torch.load(str(cfg.checkpoint.ckpt_path), map_location=cfg.model.device)
     model.load_state_dict(ckpt["model_state_dict"])  # type: ignore[index]
+    # Snapshot initial model state on CPU for per-repeat resets
+    initial_model_state = {k: v.detach().cpu() for k, v in model.state_dict().items()}
 
     in_indices = torch.tensor(ids, device=cfg.model.device)
 
@@ -145,11 +147,17 @@ def main():
     tokens_per_sec: List[float] = []
 
     for r in range(cfg.benchmark.repeats):
-        # Optional model/optimizer reset outside timed block (not enabled by default)
-        if getattr(cfg.benchmark, "reset_weights_each_repeat", False):
-            # Not configured in schemas by default; kept for forward-compat via getattr.
-            # Users enabling this in their config should ensure it's supported.
-            raise NotImplementedError("reset_weights_each_repeat is not implemented in schema")
+        # Always reset model (and optimizer state) before each timed repeat
+        model.load_state_dict(initial_model_state, strict=True)
+        model.zero_grad(set_to_none=True)
+        if cfg.benchmark.optimizer_step and cfg.optimizer is not None:
+            optimizer = AdamW(
+                model.parameters(),
+                lr=cfg.optimizer.lr,
+                betas=cfg.optimizer.betas,
+                eps=cfg.optimizer.eps,
+                weight_decay=cfg.optimizer.weight_decay,
+            )
 
         def _run():
             # Standardized micro-bench: repeat forward (and optional backward) on fixed inputs
