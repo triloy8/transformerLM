@@ -12,10 +12,3 @@ text_list = [
 
 [benchmark]
 repeats = 5
-
-[logging]
-backend = "console"
-run_name = ""
-architecture = "Tokenizer"
-dataset = "synthetic"
-

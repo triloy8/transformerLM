@@ -34,12 +34,6 @@ synchronize = true
 backward = true
 optimizer_step = true
 
-[logging]
-backend = "console"
-run_name = ""
-architecture = "TransformerLM"
-dataset = "synthetic"
-
 # Optional optimizer section for training-step benchmarking
 [optimizer]
 lr = 0.0
