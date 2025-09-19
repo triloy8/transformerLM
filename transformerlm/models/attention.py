@@ -4,6 +4,7 @@ import torch.nn as nn
 from profiling import nvtx
 
 from transformerlm.models.layers import Linear
+from transformerlm.inference.sampling import softmax
 
 
 class RotaryPositionalEmbedding(torch.nn.Module):
@@ -60,14 +61,14 @@ def scaled_dot_product_attention(Q: torch.Tensor, K: torch.Tensor, V: torch.Tens
         with nvtx.range("sdpa/mask"):
             masked_qk_score = qk_score.masked_fill(~mask, float('-inf'))
         with nvtx.range("sdpa/softmax"):
-            softmax_masked_qk_score = torch.softmax(masked_qk_score, dim=-1)
+            softmax_masked_qk_score = softmax(masked_qk_score, dim=-1)
         with nvtx.range("sdpa/attnV"):
             attn = einsum(softmax_masked_qk_score, V, "batch_size ... n m, batch_size ... m d_k -> batch_size ... n d_k")
         return attn
     else:
         qk_score = einsum(Q, K, "batch_size ... n d_k, batch_size ... m d_k -> batch_size ... n m") / torch.sqrt(torch.tensor(Q.shape[-1]))
         masked_qk_score = qk_score.masked_fill(~mask, float('-inf'))
-        softmax_masked_qk_score = torch.softmax(masked_qk_score, dim=-1)
+        softmax_masked_qk_score = softmax(masked_qk_score, dim=-1)
         attn = einsum(softmax_masked_qk_score, V, "batch_size ... n m, batch_size ... m d_k -> batch_size ... n d_k")
         return attn
 
